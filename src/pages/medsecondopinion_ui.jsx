@@ -1,4 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { submitCase, getReport, downloadUrl } from "../utils/api.js";
+import useWebSocket from "../hooks/useWebSocket.js";
 
 const SCENARIOS = [
   {
@@ -167,35 +169,103 @@ function getFileType(name) {
   return "other";
 }
 
+// Map backend step numbers (1-9) to PIPELINE_STEPS indices (0-9)
+// Backend: 1=accepted, 2=medgemma, 3=cleaning, 4=validating, 5=extracting, 6=searching, 7=verifying, 8=STORM, 9=building
+// UI index 0=received maps to backend step 1, index 9=ready has no backend step (auto-set on complete)
+const BACKEND_STEP_TO_UI = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6, 8: 7, 9: 8 };
+
 // === DIALOG COMPONENT ===
-function Dialog({ scenario, onClose, onSubmit }) {
+function Dialog({ scenario, onClose }) {
   const [action, setAction] = useState(null);
   const [running, setRunning] = useState(false);
   const [currentStep, setCurrentStep] = useState(-1);
   const [completedSteps, setCompletedSteps] = useState([]);
+  const [stepDurations, setStepDurations] = useState({});
   const [showReport, setShowReport] = useState(false);
+  const [caseId, setCaseId] = useState(null);
+  const [report, setReport] = useState(null);
+  const [error, setError] = useState(null);
+  const startTimeRef = useRef(null);
 
-  const startPipeline = () => {
+  // Handle incoming WebSocket messages
+  const handleWsMessage = useCallback((msg) => {
+    if (msg.type === "step_update") {
+      const uiIdx = BACKEND_STEP_TO_UI[msg.step];
+      if (uiIdx === undefined) return;
+
+      if (msg.status === "running") {
+        setCurrentStep(uiIdx);
+      } else if (msg.status === "done") {
+        setCompletedSteps(prev => prev.includes(uiIdx) ? prev : [...prev, uiIdx]);
+        if (msg.duration_s) {
+          setStepDurations(prev => ({ ...prev, [uiIdx]: msg.duration_s }));
+        }
+      } else if (msg.status === "error") {
+        setError(msg.label ? `Step failed: ${msg.label}` : "Pipeline step failed");
+        setRunning(false);
+      }
+    } else if (msg.type === "complete") {
+      // Mark remaining steps as done
+      setCompletedSteps(Array.from({ length: PIPELINE_STEPS.length }, (_, i) => i));
+      setCurrentStep(PIPELINE_STEPS.length - 1);
+      setRunning(false);
+      // Fetch the full report
+      getReport(msg.case_id || caseId).then(r => {
+        setReport(r);
+        setShowReport(true);
+      }).catch(() => {
+        // Use summary from WS message as fallback
+        setReport({
+          executive_summary: msg.executive_summary || "",
+          primary_diagnosis: msg.primary_diagnosis || "",
+          total_sources: msg.total_sources || 0,
+          evidence_claims: [],
+          case_id: msg.case_id || caseId,
+        });
+        setShowReport(true);
+      });
+    } else if (msg.type === "error") {
+      setError(msg.error || "Pipeline failed");
+      setRunning(false);
+    }
+  }, [caseId]);
+
+  // Connect WebSocket when caseId is set
+  useWebSocket(caseId, handleWsMessage);
+
+  const startPipeline = async () => {
     setAction("second-opinion");
     setRunning(true);
     setCurrentStep(0);
     setCompletedSteps([]);
+    setStepDurations({});
+    setError(null);
+    setReport(null);
+    startTimeRef.current = Date.now();
 
-    let step = 0;
-    const runStep = () => {
-      if (step >= PIPELINE_STEPS.length) {
-        setRunning(false);
-        setShowReport(true);
-        return;
-      }
-      setCurrentStep(step);
-      setTimeout(() => {
-        setCompletedSteps(prev => [...prev, step]);
-        step++;
-        runStep();
-      }, PIPELINE_STEPS[step].duration);
-    };
-    runStep();
+    try {
+      const payload = {
+        patient_age: scenario.age,
+        patient_sex: scenario.sex === "M" ? "male" : scenario.sex === "F" ? "female" : "other",
+        presenting_complaint: scenario.summary,
+        referring_diagnosis: scenario.referring,
+        specific_question: `Specialty: ${scenario.specialty}. Please evaluate the referring diagnosis and suggest alternatives if warranted.`,
+      };
+      const result = await submitCase(payload);
+      setCaseId(result.id);
+      // WS messages will now drive the pipeline UI
+    } catch (err) {
+      setError(err.message || "Failed to submit case");
+      setRunning(false);
+    }
+  };
+
+  const totalElapsed = () => {
+    if (!startTimeRef.current) return "";
+    const secs = Math.round((Date.now() - startTimeRef.current) / 1000);
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}m ${s.toString().padStart(2, "0")}s`;
   };
 
   return (
@@ -299,12 +369,34 @@ function Dialog({ scenario, onClose, onSubmit }) {
                 fontSize: 14, fontWeight: 600, color: "#0f172a", marginBottom: 16,
                 display: "flex", alignItems: "center", gap: 8
               }}>
-                <span style={{
-                  display: "inline-block", width: 8, height: 8, borderRadius: "50%",
-                  background: "#10b981", animation: "pulse 1.5s infinite"
-                }} />
-                Pipeline running...
+                {error ? (
+                  <>
+                    <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#ef4444" }} />
+                    <span style={{ color: "#ef4444" }}>Pipeline failed</span>
+                  </>
+                ) : (
+                  <>
+                    <span style={{
+                      display: "inline-block", width: 8, height: 8, borderRadius: "50%",
+                      background: "#10b981", animation: "pulse 1.5s infinite"
+                    }} />
+                    Pipeline running...
+                  </>
+                )}
               </div>
+              {error && (
+                <div style={{
+                  background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10,
+                  padding: "10px 14px", marginBottom: 12, fontSize: 13, color: "#991b1b"
+                }}>
+                  {error}
+                  <button onClick={startPipeline} style={{
+                    marginLeft: 12, padding: "4px 12px", borderRadius: 6,
+                    border: "1px solid #fca5a5", background: "#fff", color: "#dc2626",
+                    fontSize: 12, fontWeight: 600, cursor: "pointer"
+                  }}>Retry</button>
+                </div>
+              )}
               <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                 {PIPELINE_STEPS.map((step, i) => {
                   const done = completedSteps.includes(i);
@@ -344,7 +436,9 @@ function Dialog({ scenario, onClose, onSubmit }) {
                       )}
                       {done && (
                         <span style={{ fontSize: 11, color: "#94a3b8" }}>
-                          {(PIPELINE_STEPS[i].duration / 1000).toFixed(1)}s
+                          {stepDurations[i] != null
+                            ? `${stepDurations[i].toFixed(1)}s`
+                            : (PIPELINE_STEPS[i].duration / 1000).toFixed(1) + "s"}
                         </span>
                       )}
                     </div>
@@ -368,16 +462,20 @@ function Dialog({ scenario, onClose, onSubmit }) {
                   </span>
                 </div>
                 <div style={{ fontSize: 13, color: "#15803d", lineHeight: 1.6 }}>
-                  Analysis found <strong>Autoimmune Hepatitis (AIH)</strong> as the primary diagnosis, 
-                  challenging the referring HCC diagnosis. 9 claims verified against 41 medical sources.
+                  {report?.primary_diagnosis ? (
+                    <>Analysis found <strong>{report.primary_diagnosis}</strong> as the primary diagnosis. </>
+                  ) : null}
+                  {report?.evidence_claims?.length > 0 && (
+                    <>{report.evidence_claims.length} claims verified against {report.total_sources ?? 0} medical sources.</>
+                  )}
                 </div>
               </div>
 
               <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
                 {[
-                  { label: "Sources", value: "41" },
-                  { label: "Claims", value: "9/9" },
-                  { label: "Time", value: "2m 18s" },
+                  { label: "Sources", value: String(report?.total_sources ?? 0) },
+                  { label: "Claims", value: report?.evidence_claims ? `${report.evidence_claims.length}/${report.evidence_claims.length}` : "—" },
+                  { label: "Time", value: totalElapsed() || "—" },
                 ].map(s => (
                   <div key={s.label} style={{
                     flex: 1, textAlign: "center", padding: "10px 8px",
@@ -389,35 +487,42 @@ function Dialog({ scenario, onClose, onSubmit }) {
                 ))}
               </div>
 
-              <div style={{
-                background: "#f8fafc", borderRadius: 12, padding: 16,
-                fontSize: 13, lineHeight: 1.7, color: "#334155", marginBottom: 16
-              }}>
-                <div style={{ fontWeight: 600, color: "#0f172a", marginBottom: 6 }}>Executive Summary</div>
-                The referring physician's suspected HCC diagnosis is unlikely given the absence of classic risk factors 
-                and atypical imaging. The constellation of strongly positive autoimmune markers (ANA 1:320, ASMA+), 
-                markedly elevated IgG (2,800), and a calculated globulin gap of 5.9 g/dL strongly suggests 
-                autoimmune hepatitis as the primary diagnosis. A liver biopsy is still recommended, but pathology 
-                should specifically evaluate for interface hepatitis and plasma cell infiltration characteristic of AIH.
-              </div>
+              {report?.executive_summary && (
+                <div style={{
+                  background: "#f8fafc", borderRadius: 12, padding: 16,
+                  fontSize: 13, lineHeight: 1.7, color: "#334155", marginBottom: 16
+                }}>
+                  <div style={{ fontWeight: 600, color: "#0f172a", marginBottom: 6 }}>Executive Summary</div>
+                  {report.executive_summary}
+                </div>
+              )}
 
               <div style={{ display: "flex", gap: 8 }}>
-                <button style={{
-                  flex: 1, padding: "12px 16px",
-                  background: scenario.color, color: "#fff",
-                  border: "none", borderRadius: 10,
-                  fontSize: 13, fontWeight: 600, cursor: "pointer"
-                }}>
+                <button
+                  onClick={() => { window.location.href = `/report/${report?.case_id || caseId}`; }}
+                  style={{
+                    flex: 1, padding: "12px 16px",
+                    background: scenario.color, color: "#fff",
+                    border: "none", borderRadius: 10,
+                    fontSize: 13, fontWeight: 600, cursor: "pointer"
+                  }}
+                >
                   View Full Report →
                 </button>
-                <button style={{
-                  padding: "12px 16px",
-                  background: "#f1f5f9", color: "#475569",
-                  border: "none", borderRadius: 10,
-                  fontSize: 13, fontWeight: 500, cursor: "pointer"
-                }}>
+                <a
+                  href={downloadUrl(report?.case_id || caseId, "pdf")}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    padding: "12px 16px",
+                    background: "#f1f5f9", color: "#475569",
+                    border: "none", borderRadius: 10,
+                    fontSize: 13, fontWeight: 500, cursor: "pointer",
+                    textDecoration: "none", display: "flex", alignItems: "center"
+                  }}
+                >
                   PDF ↓
-                </button>
+                </a>
               </div>
             </div>
           )}
