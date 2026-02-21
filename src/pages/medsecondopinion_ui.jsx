@@ -628,14 +628,8 @@ export default function DemoPage() {
         position: "sticky", top: 0, zIndex: 100
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{
-            width: 34, height: 34, borderRadius: 10,
-            background: "linear-gradient(135deg, #0d9488, #14b8a6)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "#fff", fontSize: 16, fontWeight: 700
-          }}>M</div>
           <span style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.02em" }}>
-            MedSecondOpinion
+            SECND
           </span>
           <span style={{
             fontSize: 10, fontWeight: 600, color: "#0d9488",
