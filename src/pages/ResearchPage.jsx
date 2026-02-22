@@ -1,38 +1,35 @@
 import { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
-import { submitResearch } from '../utils/api';
+import { submitResearch, getReport } from '../utils/api';
 import useWebSocket from '../hooks/useWebSocket';
 
 const STEPS = [
-  { label: 'Submitting', key: 'submitted' },
-  { label: 'Researching', key: 'researching' },
-  { label: 'Writing', key: 'writing' },
-  { label: 'Complete', key: 'complete' },
+  { label: 'Topic accepted' },
+  { label: 'Research questions' },
+  { label: 'STORM research' },
+  { label: 'Compiling report' },
 ];
 
-function stepIndex(status) {
-  if (!status) return -1;
-  if (status === 'complete' || status === 'completed') return 3;
-  if (status === 'writing') return 2;
-  if (status === 'researching') return 1;
-  return 0;
+// Backend research pipeline sends step 1-4
+function backendStepToIndex(step) {
+  return Math.max(0, Math.min(step - 1, STEPS.length - 1));
 }
 
-function ProgressBar({ currentStep }) {
+function ProgressBar({ currentStep, completedSteps, stepLabels }) {
   return (
-    <div className="flex items-center gap-1 w-full max-w-md mx-auto my-8">
+    <div className="flex items-center gap-1 w-full max-w-lg mx-auto my-8">
       {STEPS.map((step, i) => {
-        const done = i <= currentStep;
-        const active = i === currentStep;
+        const done = completedSteps.has(i);
+        const active = i === currentStep && !done;
         return (
-          <div key={step.key} className="flex-1 flex flex-col items-center">
+          <div key={i} className="flex-1 flex flex-col items-center">
             <div className={`
               w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors
-              ${done ? 'bg-teal-600 border-teal-600 text-white' : 'border-gray-300 text-gray-400'}
+              ${done ? 'bg-teal-600 border-teal-600 text-white' : active ? 'border-teal-400 text-teal-600 bg-teal-50' : 'border-gray-300 text-gray-400'}
               ${active ? 'ring-2 ring-teal-300' : ''}
             `}>
-              {done && i < currentStep ? (
+              {done ? (
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
@@ -40,12 +37,9 @@ function ProgressBar({ currentStep }) {
                 i + 1
               )}
             </div>
-            <span className={`mt-1 text-xs ${done ? 'text-teal-700 font-medium' : 'text-gray-400'}`}>
-              {step.label}
+            <span className={`mt-1 text-xs text-center ${done ? 'text-teal-700 font-medium' : active ? 'text-teal-600 font-medium' : 'text-gray-400'}`}>
+              {stepLabels[i] || step.label}
             </span>
-            {i < STEPS.length - 1 && (
-              <div className={`h-0.5 w-full mt-1 ${i < currentStep ? 'bg-teal-500' : 'bg-gray-200'}`} />
-            )}
           </div>
         );
       })}
@@ -58,24 +52,56 @@ export default function ResearchPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [researchId, setResearchId] = useState(null);
-  const [status, setStatus] = useState(null);
+  const [phase, setPhase] = useState('input'); // input | running | complete | error
+  const [currentStep, setCurrentStep] = useState(-1);
+  const [completedSteps, setCompletedSteps] = useState(new Set());
+  const [stepLabels, setStepLabels] = useState({});
+  const [progressMsg, setProgressMsg] = useState('');
   const [article, setArticle] = useState(null);
   const [sources, setSources] = useState([]);
-  const [progressMsg, setProgressMsg] = useState('');
 
   const handleWsMessage = useCallback((data) => {
-    if (data.status) setStatus(data.status);
-    if (data.message) setProgressMsg(data.message);
-    if (data.type === 'complete' || data.status === 'completed') {
-      setStatus('complete');
-      if (data.article) setArticle(data.article);
-      if (data.sources) setSources(data.sources);
+    if (data.type === 'step_update') {
+      const idx = backendStepToIndex(data.step);
+
+      if (data.status === 'running') {
+        setCurrentStep(idx);
+        setPhase('running');
+        if (data.label) {
+          setStepLabels(prev => ({ ...prev, [idx]: data.label }));
+          setProgressMsg(data.label);
+        }
+        if (data.progress) setProgressMsg(data.progress);
+      } else if (data.status === 'done') {
+        setCompletedSteps(prev => new Set([...prev, idx]));
+        if (data.preview) setProgressMsg(data.preview);
+      }
+    } else if (data.type === 'complete') {
+      // Mark all steps done
+      setCompletedSteps(new Set(STEPS.map((_, i) => i)));
+      setCurrentStep(STEPS.length - 1);
+      setProgressMsg('Report ready');
+
+      // Fetch the full report from the REST endpoint
+      const caseId = data.case_id || researchId;
+      if (caseId) {
+        getReport(caseId).then(report => {
+          setArticle(report.storm_article || report.report_html || report.executive_summary || '');
+          setSources(report.references || []);
+          setPhase('complete');
+        }).catch(() => {
+          // Fallback: use whatever the WS message gave us
+          setArticle(data.executive_summary || 'Research complete. Check the report for details.');
+          setPhase('complete');
+        });
+      } else {
+        setPhase('complete');
+      }
+    } else if (data.type === 'error') {
+      setError(data.error || data.message || 'Research failed');
+      setPhase('error');
     }
-    if (data.type === 'error') {
-      setError(data.message || 'Research failed');
-      setStatus('error');
-    }
-  }, []);
+  }, [researchId]);
 
   useWebSocket(researchId, handleWsMessage, 'cases');
 
@@ -87,21 +113,37 @@ export default function ResearchPage() {
     setError(null);
     setArticle(null);
     setSources([]);
-    setStatus('submitted');
-    setProgressMsg('');
+    setPhase('running');
+    setCurrentStep(0);
+    setCompletedSteps(new Set());
+    setStepLabels({});
+    setProgressMsg('Submitting...');
 
     try {
       const result = await submitResearch({ research_topic: topic.trim() });
       setResearchId(result.id);
+      setCompletedSteps(new Set([0]));
+      setProgressMsg('Topic accepted');
     } catch (err) {
       setError(err.message);
-      setStatus(null);
+      setPhase('error');
     } finally {
       setSubmitting(false);
     }
   }
 
-  const isRunning = status && status !== 'complete' && status !== 'error';
+  function handleReset() {
+    setResearchId(null);
+    setPhase('input');
+    setCurrentStep(-1);
+    setCompletedSteps(new Set());
+    setStepLabels({});
+    setProgressMsg('');
+    setArticle(null);
+    setSources([]);
+    setError(null);
+    setTopic('');
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -115,8 +157,8 @@ export default function ResearchPage() {
       </header>
 
       <main className="mx-auto max-w-4xl px-6 py-10">
-        {/* Input form — shown when no research is running */}
-        {!researchId && (
+        {/* Input form */}
+        {phase === 'input' && (
           <div className="animate-fade-in-up">
             <h1 className="text-3xl font-bold text-gray-900">Deep Research</h1>
             <p className="mt-2 text-gray-500">
@@ -155,11 +197,11 @@ export default function ResearchPage() {
         )}
 
         {/* Progress */}
-        {researchId && isRunning && (
+        {phase === 'running' && (
           <div className="animate-fade-in-up">
             <h2 className="text-xl font-bold text-gray-900 text-center">Researching</h2>
             <p className="text-center text-sm text-gray-500 mt-1 truncate max-w-md mx-auto">{topic}</p>
-            <ProgressBar currentStep={stepIndex(status)} />
+            <ProgressBar currentStep={currentStep} completedSteps={completedSteps} stepLabels={stepLabels} />
             {progressMsg && (
               <p className="text-center text-sm text-teal-600 animate-pulse">{progressMsg}</p>
             )}
@@ -167,12 +209,12 @@ export default function ResearchPage() {
         )}
 
         {/* Error state */}
-        {status === 'error' && (
+        {phase === 'error' && (
           <div className="animate-fade-in-up mt-8 rounded-xl bg-red-50 border border-red-200 p-6 text-center">
             <p className="text-red-700 font-medium">Research failed</p>
             <p className="text-red-600 text-sm mt-1">{error}</p>
             <button
-              onClick={() => { setResearchId(null); setStatus(null); setError(null); }}
+              onClick={handleReset}
               className="mt-4 text-sm text-red-600 underline hover:text-red-800"
             >
               Try again
@@ -181,21 +223,25 @@ export default function ResearchPage() {
         )}
 
         {/* Completed article */}
-        {status === 'complete' && article && (
+        {phase === 'complete' && (
           <div className="animate-fade-in-up">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-900">Research Article</h2>
               <button
-                onClick={() => { setResearchId(null); setStatus(null); setArticle(null); setSources([]); setTopic(''); }}
+                onClick={handleReset}
                 className="text-sm text-teal-600 hover:text-teal-800 font-medium"
               >
                 New Research
               </button>
             </div>
 
-            <article className="prose prose-gray max-w-none bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
-              <ReactMarkdown>{article}</ReactMarkdown>
-            </article>
+            {article ? (
+              <article className="prose prose-gray max-w-none bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
+                <ReactMarkdown>{article}</ReactMarkdown>
+              </article>
+            ) : (
+              <p className="text-gray-500">No article content available.</p>
+            )}
 
             {sources.length > 0 && (
               <div className="mt-8">
