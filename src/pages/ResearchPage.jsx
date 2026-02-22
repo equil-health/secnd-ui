@@ -77,7 +77,7 @@ export default function ResearchPage() {
     }
   }, []);
 
-  useWebSocket(researchId, handleWsMessage, 'research');
+  useWebSocket(researchId, handleWsMessage, 'cases');
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -91,7 +91,7 @@ export default function ResearchPage() {
     setProgressMsg('');
 
     try {
-      const result = await submitResearch(topic.trim());
+      const result = await submitResearch({ research_topic: topic.trim() });
       setResearchId(result.id);
     } catch (err) {
       setError(err.message);
