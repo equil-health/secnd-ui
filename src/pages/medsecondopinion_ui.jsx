@@ -3,10 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { submitCase, submitResearch, submitAudio, getReport, downloadUrl } from "../utils/api.js";
 import useWebSocket from "../hooks/useWebSocket.js";
 
+function PersonIcon({ size = 22, color = "#64748b" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
 const SCENARIOS = [
   {
     id: "SCN-001",
-    avatar: "👨🏽",
     age: 54, sex: "M", bmi: 23.5,
     specialty: "Cardiology",
     lang: "EN",
@@ -17,7 +25,6 @@ const SCENARIOS = [
   },
   {
     id: "SCN-002",
-    avatar: "👨🏻",
     age: 46, sex: "M", bmi: 24.8,
     specialty: "General Medicine",
     lang: "EN",
@@ -28,7 +35,6 @@ const SCENARIOS = [
   },
   {
     id: "SCN-003",
-    avatar: "👩🏼",
     age: 30, sex: "F", bmi: 22.0,
     specialty: "Neurology",
     lang: "EN",
@@ -39,7 +45,6 @@ const SCENARIOS = [
   },
   {
     id: "SCN-004",
-    avatar: "👨🏽",
     age: 47, sex: "M", bmi: 21.3,
     specialty: "Hepatology",
     lang: "EN",
@@ -50,7 +55,6 @@ const SCENARIOS = [
   },
   {
     id: "SCN-005",
-    avatar: "👩🏻",
     age: 72, sex: "F", bmi: 25.9,
     specialty: "Cardiology",
     lang: "FR",
@@ -61,7 +65,6 @@ const SCENARIOS = [
   },
   {
     id: "SCN-006",
-    avatar: "👩🏼",
     age: 48, sex: "F", bmi: 33.1,
     specialty: "Cardiology",
     lang: "EN",
@@ -72,7 +75,6 @@ const SCENARIOS = [
   },
   {
     id: "SCN-007",
-    avatar: "👨🏻‍🦳",
     age: 68, sex: "M", bmi: 26.8,
     specialty: "Endocrinology",
     lang: "EN",
@@ -83,7 +85,6 @@ const SCENARIOS = [
   },
   {
     id: "SCN-008",
-    avatar: "👩🏾",
     age: 35, sex: "F", bmi: 22.4,
     specialty: "Pulmonology",
     lang: "EN",
@@ -94,7 +95,6 @@ const SCENARIOS = [
   },
   {
     id: "SCN-009",
-    avatar: "👨🏽‍🦱",
     age: 55, sex: "M", bmi: 29.5,
     specialty: "Gastroenterology",
     lang: "FR",
@@ -345,9 +345,8 @@ function Dialog({ scenario, onClose, pipelineType = "diagnosis" }) {
               width: 52, height: 52, borderRadius: 14,
               background: scenario.color + "12", border: `2px solid ${scenario.color}30`,
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 28
             }}>
-              {scenario.avatar}
+              <PersonIcon size={26} color={scenario.color} />
             </div>
             <div>
               <div style={{ fontSize: 11, fontWeight: 600, color: scenario.color, textTransform: "uppercase", letterSpacing: "0.08em" }}>
@@ -760,7 +759,6 @@ function ResearchDialog({ topic, additionalContext, onClose }) {
     <Dialog
       scenario={{
         id: "RES",
-        avatar: "📚",
         age: "",
         sex: "",
         bmi: "",
@@ -1493,6 +1491,90 @@ export default function DemoPage() {
               gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
               gap: 16
             }}>
+              {/* Audio upload card — always first */}
+              <div
+                onMouseEnter={() => setHoveredCard("audio")}
+                onMouseLeave={() => setHoveredCard(null)}
+                onClick={() => setShowAudio(true)}
+                style={{
+                  background: "#fff",
+                  borderRadius: 16,
+                  border: `1.5px solid ${hoveredCard === "audio" ? "#0d948860" : "#e8ecf0"}`,
+                  cursor: "pointer",
+                  transition: "all 0.25s ease",
+                  transform: hoveredCard === "audio" ? "translateY(-3px)" : "",
+                  boxShadow: hoveredCard === "audio"
+                    ? "0 12px 32px rgba(13,148,136,0.08), 0 4px 12px rgba(0,0,0,0.06)"
+                    : "0 1px 3px rgba(0,0,0,0.04)",
+                  animation: "cardIn 0.4s ease 0s both",
+                  overflow: "hidden"
+                }}
+              >
+                <div style={{
+                  height: 4,
+                  background: "linear-gradient(90deg, #0d9488, #0d948888)",
+                  opacity: hoveredCard === "audio" ? 1 : 0.4,
+                  transition: "opacity 0.25s"
+                }} />
+                <div style={{ padding: "20px 22px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
+                    <div style={{
+                      width: 52, height: 52, borderRadius: 14,
+                      background: "#0d948810",
+                      border: "2px solid #0d948825",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      flexShrink: 0
+                    }}>
+                      <MicIcon />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{
+                        display: "flex", alignItems: "center", gap: 8
+                      }}>
+                        <span style={{
+                          fontSize: 11, fontWeight: 600,
+                          color: "#0d9488", letterSpacing: "0.04em",
+                          textTransform: "uppercase"
+                        }}>NEW</span>
+                        <span style={{
+                          fontSize: 10, padding: "2px 7px", borderRadius: 4,
+                          background: "#f0fdfa", color: "#0d9488", fontWeight: 500
+                        }}>Audio</span>
+                      </div>
+                      <div style={{
+                        fontSize: 14, fontWeight: 600, color: "#0f172a", marginTop: 3
+                      }}>
+                        Try Audio Upload
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{
+                    fontSize: 11, fontWeight: 600, color: "#94a3b8",
+                    textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4
+                  }}>
+                    Physician Dictation
+                  </div>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, color: "#0f172a", marginBottom: 10 }}>
+                    Upload a voice recording for AI analysis
+                  </div>
+                  <div style={{
+                    fontSize: 12.5, color: "#64748b", lineHeight: 1.6,
+                    display: "-webkit-box", WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical", overflow: "hidden"
+                  }}>
+                    Drop a WAV, MP3, or M4A file. SECND transcribes, extracts clinical data, and runs the full second-opinion pipeline.
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 12 }}>
+                    {["Voice input", "Auto-transcribe", "Full pipeline"].map(t => (
+                      <span key={t} style={{
+                        fontSize: 10.5, padding: "3px 8px", borderRadius: 5,
+                        background: "#f0fdfa", color: "#0d9488", fontWeight: 500
+                      }}>{t}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
               {filtered.map((sc, i) => (
                 <div key={sc.id}
                   onMouseEnter={() => setHoveredCard(sc.id)}
@@ -1508,7 +1590,7 @@ export default function DemoPage() {
                     boxShadow: hoveredCard === sc.id
                       ? `0 12px 32px ${sc.color}18, 0 4px 12px rgba(0,0,0,0.06)`
                       : "0 1px 3px rgba(0,0,0,0.04)",
-                    animation: `cardIn 0.4s ease ${i * 0.06}s both`,
+                    animation: `cardIn 0.4s ease ${(i + 1) * 0.06}s both`,
                     overflow: "hidden"
                   }}
                 >
@@ -1528,9 +1610,9 @@ export default function DemoPage() {
                         background: sc.color + "10",
                         border: `2px solid ${sc.color}25`,
                         display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 28, flexShrink: 0
+                        flexShrink: 0
                       }}>
-                        {sc.avatar}
+                        <PersonIcon size={24} color={sc.color} />
                       </div>
                       <div style={{ flex: 1 }}>
                         <div style={{
