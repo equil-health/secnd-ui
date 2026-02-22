@@ -34,6 +34,12 @@ export default function Chat() {
             New Case
           </button>
           <Link
+            to="/submit"
+            className="text-sm text-gray-500 hover:text-gray-700"
+          >
+            Upload
+          </Link>
+          <Link
             to="/history"
             className="text-sm text-gray-500 hover:text-gray-700"
           >

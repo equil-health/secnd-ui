@@ -53,6 +53,18 @@ export async function listCases(page = 1, perPage = 20) {
   return res.json();
 }
 
+export async function submitCaseWithFiles(formData) {
+  const res = await fetch(`${BASE}/cases/submit-with-files`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || res.statusText);
+  }
+  return res.json();
+}
+
 export function downloadUrl(id, format) {
   return `${BASE}/cases/${id}/report/${format}`;
 }

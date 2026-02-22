@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { submitCase, getReport, downloadUrl } from "../utils/api.js";
 import useWebSocket from "../hooks/useWebSocket.js";
 
@@ -699,6 +700,7 @@ export default function DemoPage() {
   const [showUpload, setShowUpload] = useState(false);
   const [activeSpecialty, setActiveSpecialty] = useState("All");
   const [hoveredCard, setHoveredCard] = useState(null);
+  const navigate = useNavigate();
 
   const filtered = activeSpecialty === "All"
     ? SCENARIOS
@@ -761,6 +763,13 @@ export default function DemoPage() {
             }}>{m.label}</button>
           ))}
         </div>
+
+        <button onClick={() => navigate("/submit")} style={{
+          padding: "8px 18px", borderRadius: 8, border: "1px solid #6366f1",
+          fontSize: 13, fontWeight: 500, cursor: "pointer",
+          background: "#6366f1", color: "#fff",
+          transition: "all 0.2s"
+        }}>Submit Case</button>
       </div>
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "40px 24px 60px" }}>
