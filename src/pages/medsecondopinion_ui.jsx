@@ -876,10 +876,14 @@ function AudioDialog({ onClose }) {
       const formData = new FormData();
       formData.append("audio", file);
       const result = await submitAudio(formData);
-      setCaseId(result.id);
+      // Steps 1-3 ran synchronously on the server before this response,
+      // so WS messages for them were already sent (and missed). Mark done.
+      setCompletedSteps([0, 1, 2]);
+      setCurrentStep(3);
       if (result.transcript_preview) {
         setTranscript(result.transcript_preview);
       }
+      setCaseId(result.id);
     } catch (err) {
       setError(err.message || "Failed to submit audio");
       setRunning(false);
