@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { submitCase, submitResearch, getReport, downloadUrl } from "../utils/api.js";
+import { submitCase, submitResearch, submitAudio, getReport, downloadUrl } from "../utils/api.js";
 import useWebSocket from "../hooks/useWebSocket.js";
 
 const SCENARIOS = [
@@ -185,6 +185,26 @@ const BACKEND_STEP_TO_UI = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6, 8: 7, 9: 
 
 // Research pipeline: backend step 1=accepted(0), 2=questions(1), 3=STORM(2), 4=compile(3)
 const RESEARCH_STEP_TO_UI = { 1: 0, 2: 1, 3: 2, 4: 3 };
+
+const AUDIO_PIPELINE_STEPS = [
+  { icon: "\uD83C\uDFA4", label: "Audio received", duration: 300 },
+  { icon: "\uD83D\uDDE3\uFE0F", label: "MedASR transcribing", duration: 4000 },
+  { icon: "\uD83D\uDCCB", label: "Structuring transcript", duration: 3000 },
+  { icon: "\uD83E\uDDEC", label: "MedGemma analyzing", duration: 3000 },
+  { icon: "\uD83E\uDDF9", label: "Cleaning output", duration: 600 },
+  { icon: "\uD83D\uDD0D", label: "Checking for hallucinations", duration: 1500 },
+  { icon: "\uD83D\uDCD1", label: "Extracting claims", duration: 1200 },
+  { icon: "\uD83D\uDD0E", label: "Searching medical literature", duration: 2500 },
+  { icon: "\u2696\uFE0F", label: "Verifying against evidence", duration: 2000 },
+  { icon: "\uD83C\uDF29\uFE0F", label: "STORM deep research", duration: 4000 },
+  { icon: "\uD83D\uDCDD", label: "Compiling report", duration: 1000 },
+  { icon: "\u2705", label: "Report ready", duration: 500 },
+];
+
+// Audio pipeline: steps 1-3 are audio-specific (broadcast by route),
+// steps 2-9 from existing pipeline map to UI indices 3-10
+const AUDIO_STEP_TO_UI = { 1: 0, 2: 1, 3: 2 };
+const AUDIO_EXISTING_STEP_TO_UI = { 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9, 9: 10 };
 
 // === DIALOG COMPONENT ===
 function Dialog({ scenario, onClose, pipelineType = "diagnosis" }) {
@@ -757,6 +777,438 @@ function ResearchDialog({ topic, additionalContext, onClose }) {
   );
 }
 
+// === AUDIO DIALOG ===
+function MicIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+      <line x1="12" y1="19" x2="12" y2="23" />
+      <line x1="8" y1="23" x2="16" y2="23" />
+    </svg>
+  );
+}
+
+function AudioDialog({ onClose }) {
+  const [file, setFile] = useState(null);
+  const [dragging, setDragging] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [currentStep, setCurrentStep] = useState(-1);
+  const [completedSteps, setCompletedSteps] = useState([]);
+  const [stepDurations, setStepDurations] = useState({});
+  const [caseId, setCaseId] = useState(null);
+  const [error, setError] = useState(null);
+  const [transcript, setTranscript] = useState(null);
+  const [showTranscript, setShowTranscript] = useState(true);
+  const [showReport, setShowReport] = useState(false);
+  const [report, setReport] = useState(null);
+  const startTimeRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  const steps = AUDIO_PIPELINE_STEPS;
+  const accentColor = "#0d9488";
+
+  // Map incoming WS step numbers to UI indices
+  const mapStep = useCallback((step) => {
+    if (AUDIO_STEP_TO_UI[step] !== undefined) return AUDIO_STEP_TO_UI[step];
+    if (AUDIO_EXISTING_STEP_TO_UI[step] !== undefined) return AUDIO_EXISTING_STEP_TO_UI[step];
+    return undefined;
+  }, []);
+
+  const handleWsMessage = useCallback((msg) => {
+    if (msg.type === "step_update") {
+      const uiIdx = mapStep(msg.step);
+      if (uiIdx === undefined) return;
+
+      if (msg.status === "running") {
+        setCurrentStep(uiIdx);
+      } else if (msg.status === "done") {
+        setCompletedSteps(prev => prev.includes(uiIdx) ? prev : [...prev, uiIdx]);
+        if (msg.duration_s) {
+          setStepDurations(prev => ({ ...prev, [uiIdx]: msg.duration_s }));
+        }
+        // Capture transcript preview from MedASR step
+        if (msg.step === 2 && msg.preview) {
+          setTranscript(msg.preview);
+        }
+      } else if (msg.status === "error") {
+        setError(msg.label ? `Step failed: ${msg.label}` : "Pipeline step failed");
+        setRunning(false);
+      }
+    } else if (msg.type === "complete") {
+      setCompletedSteps(Array.from({ length: steps.length }, (_, i) => i));
+      setCurrentStep(steps.length - 1);
+      setRunning(false);
+      getReport(msg.case_id || caseId).then(r => {
+        setReport(r);
+        setShowReport(true);
+      }).catch(() => {
+        setReport({
+          executive_summary: msg.executive_summary || "",
+          primary_diagnosis: msg.primary_diagnosis || "",
+          total_sources: msg.total_sources || 0,
+          evidence_claims: [],
+          case_id: msg.case_id || caseId,
+          pipeline_type: "diagnosis",
+        });
+        setShowReport(true);
+      });
+    } else if (msg.type === "error") {
+      setError(msg.error || "Pipeline failed");
+      setRunning(false);
+    }
+  }, [caseId, mapStep, steps]);
+
+  useWebSocket(caseId, handleWsMessage);
+
+  const handleSubmit = async () => {
+    if (!file) return;
+    setRunning(true);
+    setCurrentStep(0);
+    setCompletedSteps([]);
+    setStepDurations({});
+    setError(null);
+    setReport(null);
+    setTranscript(null);
+    startTimeRef.current = Date.now();
+
+    try {
+      const formData = new FormData();
+      formData.append("audio", file);
+      const result = await submitAudio(formData);
+      setCaseId(result.id);
+      if (result.transcript_preview) {
+        setTranscript(result.transcript_preview);
+      }
+    } catch (err) {
+      setError(err.message || "Failed to submit audio");
+      setRunning(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragging(false);
+    const dropped = e.dataTransfer.files[0];
+    if (dropped) setFile(dropped);
+  };
+
+  const totalElapsed = () => {
+    if (!startTimeRef.current) return "";
+    const secs = Math.round((Date.now() - startTimeRef.current) / 1000);
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}m ${s.toString().padStart(2, "0")}s`;
+  };
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 1000,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)",
+      animation: "fadeIn 0.2s ease"
+    }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: "#fff", borderRadius: 20, width: "100%", maxWidth: showReport ? 700 : 500,
+        maxHeight: "90vh", overflow: "auto",
+        boxShadow: "0 25px 60px rgba(0,0,0,0.3)",
+        animation: "slideUp 0.3s ease"
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: "24px 28px 20px", borderBottom: "1px solid #f1f5f9",
+          display: "flex", alignItems: "center", justifyContent: "space-between"
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{
+              width: 52, height: 52, borderRadius: 14,
+              background: "#f0fdfa", border: "2px solid #99f6e430",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 28
+            }}>
+              {"\uD83C\uDFA4"}
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: accentColor, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Audio Input
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: "#0f172a", marginTop: 2 }}>
+                Physician Dictation
+              </div>
+            </div>
+          </div>
+          <button onClick={onClose} style={{
+            background: "#f1f5f9", border: "none", borderRadius: 10,
+            width: 36, height: 36, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "#64748b"
+          }}><XIcon /></button>
+        </div>
+
+        <div style={{ padding: "20px 28px 28px" }}>
+          {/* File selection (before running) */}
+          {!running && !showReport && (
+            <>
+              <div
+                onDragOver={e => { e.preventDefault(); setDragging(true); }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  border: `2px dashed ${dragging ? accentColor : "#e2e8f0"}`,
+                  borderRadius: 14, padding: "28px 20px",
+                  textAlign: "center", cursor: "pointer",
+                  background: dragging ? "#f0fdfa" : file ? "#f0fdfa" : "#fafbfc",
+                  transition: "all 0.2s", marginBottom: 16
+                }}
+              >
+                <input
+                  ref={fileInputRef} type="file" hidden
+                  accept=".wav,.mp3,.m4a,.webm,.flac,.ogg"
+                  onChange={e => { if (e.target.files[0]) setFile(e.target.files[0]); }}
+                />
+                {file ? (
+                  <div>
+                    <div style={{ fontSize: 24, marginBottom: 6 }}>{"\uD83C\uDFA4"}</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>{file.name}</div>
+                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                      {(file.size / 1024).toFixed(0)} KB — click to change
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ color: "#94a3b8", marginBottom: 8, display: "flex", justifyContent: "center" }}>
+                      <MicIcon />
+                    </div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "#334155" }}>
+                      Drop audio file or click to browse
+                    </div>
+                    <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
+                      WAV, MP3, M4A, WebM, FLAC, OGG
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <button
+                disabled={!file}
+                onClick={handleSubmit}
+                style={{
+                  width: "100%", padding: "14px 20px",
+                  background: file ? `linear-gradient(135deg, ${accentColor}, #0f766e)` : "#e2e8f0",
+                  color: file ? "#fff" : "#94a3b8",
+                  border: "none", borderRadius: 12,
+                  fontSize: 14, fontWeight: 600,
+                  cursor: file ? "pointer" : "not-allowed",
+                  boxShadow: file ? "0 4px 14px rgba(13,148,136,0.3)" : "none",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                  transition: "all 0.2s"
+                }}
+              >
+                <span style={{ fontSize: 18 }}>{"\uD83D\uDD2C"}</span>
+                Start Analysis
+              </button>
+            </>
+          )}
+
+          {/* Pipeline progress */}
+          {running && !showReport && (
+            <div>
+              <div style={{
+                fontSize: 14, fontWeight: 600, color: "#0f172a", marginBottom: 16,
+                display: "flex", alignItems: "center", gap: 8
+              }}>
+                {error ? (
+                  <>
+                    <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#ef4444" }} />
+                    <span style={{ color: "#ef4444" }}>Pipeline failed</span>
+                  </>
+                ) : (
+                  <>
+                    <span style={{
+                      display: "inline-block", width: 8, height: 8, borderRadius: "50%",
+                      background: "#10b981", animation: "pulse 1.5s infinite"
+                    }} />
+                    Pipeline running...
+                  </>
+                )}
+              </div>
+
+              {error && (
+                <div style={{
+                  background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10,
+                  padding: "10px 14px", marginBottom: 12, fontSize: 13, color: "#991b1b"
+                }}>
+                  {error}
+                  <button onClick={handleSubmit} style={{
+                    marginLeft: 12, padding: "4px 12px", borderRadius: 6,
+                    border: "1px solid #fca5a5", background: "#fff", color: "#dc2626",
+                    fontSize: 12, fontWeight: 600, cursor: "pointer"
+                  }}>Retry</button>
+                </div>
+              )}
+
+              {/* Transcript preview */}
+              {transcript && (
+                <div style={{ marginBottom: 12 }}>
+                  <button
+                    onClick={() => setShowTranscript(prev => !prev)}
+                    style={{
+                      background: "none", border: "none", cursor: "pointer",
+                      fontSize: 12, fontWeight: 600, color: accentColor,
+                      display: "flex", alignItems: "center", gap: 4, padding: 0, marginBottom: 4
+                    }}
+                  >
+                    {showTranscript ? "\u25BC" : "\u25B6"} Transcript Preview
+                  </button>
+                  {showTranscript && (
+                    <div style={{
+                      background: "#f0fdfa", borderRadius: 10, padding: "10px 14px",
+                      fontSize: 12.5, lineHeight: 1.6, color: "#334155",
+                      border: "1px solid #99f6e430", fontStyle: "italic"
+                    }}>
+                      "{transcript}"
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {steps.map((step, i) => {
+                  const done = completedSteps.includes(i);
+                  const active = currentStep === i && !done;
+                  const waiting = i > currentStep;
+                  return (
+                    <div key={i} style={{
+                      display: "flex", alignItems: "center", gap: 12,
+                      padding: "8px 12px", borderRadius: 10,
+                      background: active ? accentColor + "08" : "transparent",
+                      transition: "all 0.3s ease",
+                      opacity: waiting ? 0.35 : 1
+                    }}>
+                      <div style={{
+                        width: 30, height: 30, borderRadius: 8,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 15,
+                        background: done ? "#10b98118" : active ? accentColor + "15" : "#f1f5f9",
+                        transition: "all 0.3s"
+                      }}>
+                        {done ? "\u2713" : step.icon}
+                      </div>
+                      <span style={{
+                        fontSize: 13, fontWeight: active ? 600 : 400,
+                        color: done ? "#10b981" : active ? accentColor : "#94a3b8",
+                        flex: 1
+                      }}>
+                        {step.label}
+                      </span>
+                      {active && (
+                        <div style={{
+                          width: 16, height: 16, borderRadius: "50%",
+                          border: `2px solid ${accentColor}`,
+                          borderTopColor: "transparent",
+                          animation: "spin 0.8s linear infinite"
+                        }} />
+                      )}
+                      {done && (
+                        <span style={{ fontSize: 11, color: "#94a3b8" }}>
+                          {stepDurations[i] != null
+                            ? `${stepDurations[i].toFixed(1)}s`
+                            : (steps[i].duration / 1000).toFixed(1) + "s"}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Report */}
+          {showReport && (
+            <div>
+              <div style={{
+                background: "linear-gradient(135deg, #ecfdf5, #f0fdf4)",
+                borderRadius: 12, padding: 16, marginBottom: 16,
+                border: "1px solid #bbf7d0"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 20 }}>{"\u2705"}</span>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: "#166534" }}>
+                    Second Opinion Complete
+                  </span>
+                </div>
+                <div style={{ fontSize: 13, color: "#15803d", lineHeight: 1.6 }}>
+                  {report?.primary_diagnosis ? (
+                    <>Analysis found <strong>{report.primary_diagnosis}</strong> as the primary diagnosis. </>
+                  ) : null}
+                  {report?.evidence_claims?.length > 0 && (
+                    <>{report.evidence_claims.length} claims verified against {report.total_sources ?? 0} medical sources.</>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                {[
+                  { label: "Sources", value: String(report?.total_sources ?? 0) },
+                  { label: "Claims", value: report?.evidence_claims ? `${report.evidence_claims.length}/${report.evidence_claims.length}` : "\u2014" },
+                  { label: "Time", value: totalElapsed() || "\u2014" },
+                ].map(s => (
+                  <div key={s.label} style={{
+                    flex: 1, textAlign: "center", padding: "10px 8px",
+                    background: "#f8fafc", borderRadius: 10
+                  }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: "#0f172a" }}>{s.value}</div>
+                    <div style={{ fontSize: 11, color: "#94a3b8" }}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {report?.executive_summary && (
+                <div style={{
+                  background: "#f8fafc", borderRadius: 12, padding: 16,
+                  fontSize: 13, lineHeight: 1.7, color: "#334155", marginBottom: 16
+                }}>
+                  <div style={{ fontWeight: 600, color: "#0f172a", marginBottom: 6 }}>Executive Summary</div>
+                  {report.executive_summary}
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={() => { window.location.href = `/report/${report?.case_id || caseId}`; }}
+                  style={{
+                    flex: 1, padding: "12px 16px",
+                    background: accentColor, color: "#fff",
+                    border: "none", borderRadius: 10,
+                    fontSize: 13, fontWeight: 600, cursor: "pointer"
+                  }}
+                >
+                  View Full Report \u2192
+                </button>
+                <a
+                  href={downloadUrl(report?.case_id || caseId, "pdf")}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    padding: "12px 16px",
+                    background: "#f1f5f9", color: "#475569",
+                    border: "none", borderRadius: 10,
+                    fontSize: 13, fontWeight: 500, cursor: "pointer",
+                    textDecoration: "none", display: "flex", alignItems: "center"
+                  }}
+                >
+                  PDF \u2193
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // === MAIN APP ===
 export default function DemoPage() {
   const [mode, setMode] = useState("demo"); // demo | upload
@@ -769,6 +1221,7 @@ export default function DemoPage() {
   const [researchContext, setResearchContext] = useState("");
   const [researchRunning, setResearchRunning] = useState(false);
   const [researchCaseId, setResearchCaseId] = useState(null);
+  const [showAudio, setShowAudio] = useState(false);
   const navigate = useNavigate();
 
   const filtered = activeSpecialty === "All"
@@ -851,6 +1304,14 @@ export default function DemoPage() {
                   transition: "all 0.2s"
                 }}>{m.label}</button>
               ))}
+              <button onClick={() => setShowAudio(true)} style={{
+                padding: "8px 16px", borderRadius: 8, border: "none",
+                fontSize: 12.5, fontWeight: 500, cursor: "pointer",
+                background: "transparent",
+                color: "#0d9488",
+                transition: "all 0.2s",
+                display: "flex", alignItems: "center", gap: 4
+              }}><MicIcon /> Audio</button>
             </div>
           )}
         </div>
@@ -1243,6 +1704,7 @@ export default function DemoPage() {
         />
       )}
       {showUpload && <UploadPanel onClose={() => setShowUpload(false)} />}
+      {showAudio && <AudioDialog onClose={() => setShowAudio(false)} />}
       {researchRunning && (
         <ResearchDialog
           topic={researchTopic}
