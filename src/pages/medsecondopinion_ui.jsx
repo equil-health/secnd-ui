@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { submitCase, getReport, downloadUrl } from "../utils/api.js";
+import { submitCase, submitResearch, getReport, downloadUrl } from "../utils/api.js";
 import useWebSocket from "../hooks/useWebSocket.js";
 
 const SCENARIOS = [
@@ -170,13 +170,27 @@ function getFileType(name) {
   return "other";
 }
 
+const RESEARCH_PIPELINE_STEPS = [
+  { icon: "📋", label: "Topic accepted", duration: 500 },
+  { icon: "💡", label: "Generating research questions", duration: 2000 },
+  { icon: "🌩️", label: "STORM deep research", duration: 4000 },
+  { icon: "📝", label: "Compiling report", duration: 1000 },
+  { icon: "✅", label: "Report ready", duration: 500 },
+];
+
 // Map backend step numbers (1-9) to PIPELINE_STEPS indices (0-9)
 // Backend: 1=accepted, 2=medgemma, 3=cleaning, 4=validating, 5=extracting, 6=searching, 7=verifying, 8=STORM, 9=building
 // UI index 0=received maps to backend step 1, index 9=ready has no backend step (auto-set on complete)
 const BACKEND_STEP_TO_UI = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6, 8: 7, 9: 8 };
 
+// Research pipeline: backend step 1=accepted(0), 2=questions(1), 3=STORM(2), 4=compile(3)
+const RESEARCH_STEP_TO_UI = { 1: 0, 2: 1, 3: 2, 4: 3 };
+
 // === DIALOG COMPONENT ===
-function Dialog({ scenario, onClose }) {
+function Dialog({ scenario, onClose, pipelineType = "diagnosis" }) {
+  const isResearch = pipelineType === "research";
+  const steps = isResearch ? RESEARCH_PIPELINE_STEPS : PIPELINE_STEPS;
+  const stepMap = isResearch ? RESEARCH_STEP_TO_UI : BACKEND_STEP_TO_UI;
   const [action, setAction] = useState(null);
   const [running, setRunning] = useState(false);
   const [currentStep, setCurrentStep] = useState(-1);
@@ -191,7 +205,7 @@ function Dialog({ scenario, onClose }) {
   // Handle incoming WebSocket messages
   const handleWsMessage = useCallback((msg) => {
     if (msg.type === "step_update") {
-      const uiIdx = BACKEND_STEP_TO_UI[msg.step];
+      const uiIdx = stepMap[msg.step];
       if (uiIdx === undefined) return;
 
       if (msg.status === "running") {
@@ -207,8 +221,8 @@ function Dialog({ scenario, onClose }) {
       }
     } else if (msg.type === "complete") {
       // Mark remaining steps as done
-      setCompletedSteps(Array.from({ length: PIPELINE_STEPS.length }, (_, i) => i));
-      setCurrentStep(PIPELINE_STEPS.length - 1);
+      setCompletedSteps(Array.from({ length: steps.length }, (_, i) => i));
+      setCurrentStep(steps.length - 1);
       setRunning(false);
       // Fetch the full report
       getReport(msg.case_id || caseId).then(r => {
@@ -222,6 +236,7 @@ function Dialog({ scenario, onClose }) {
           total_sources: msg.total_sources || 0,
           evidence_claims: [],
           case_id: msg.case_id || caseId,
+          pipeline_type: pipelineType,
         });
         setShowReport(true);
       });
@@ -229,13 +244,23 @@ function Dialog({ scenario, onClose }) {
       setError(msg.error || "Pipeline failed");
       setRunning(false);
     }
-  }, [caseId]);
+  }, [caseId, stepMap, steps, pipelineType]);
 
   // Connect WebSocket when caseId is set
   useWebSocket(caseId, handleWsMessage);
 
+  // Auto-start pipeline for research (no scenario detail screen needed)
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (isResearch && !autoStarted.current) {
+      autoStarted.current = true;
+      startPipelineRef.current?.();
+    }
+  }, [isResearch]);
+
+  const startPipelineRef = useRef(null);
   const startPipeline = async () => {
-    setAction("second-opinion");
+    setAction(isResearch ? "research" : "second-opinion");
     setRunning(true);
     setCurrentStep(0);
     setCompletedSteps([]);
@@ -245,21 +270,30 @@ function Dialog({ scenario, onClose }) {
     startTimeRef.current = Date.now();
 
     try {
-      const payload = {
-        patient_age: scenario.age,
-        patient_sex: scenario.sex === "M" ? "male" : scenario.sex === "F" ? "female" : "other",
-        presenting_complaint: scenario.summary,
-        referring_diagnosis: scenario.referring,
-        specific_question: `Specialty: ${scenario.specialty}. Please evaluate the referring diagnosis and suggest alternatives if warranted.`,
-      };
-      const result = await submitCase(payload);
+      let result;
+      if (isResearch) {
+        result = await submitResearch({
+          research_topic: scenario.summary || scenario.referring,
+          additional_context: scenario.summary !== scenario.referring ? scenario.summary : undefined,
+        });
+      } else {
+        const payload = {
+          patient_age: scenario.age,
+          patient_sex: scenario.sex === "M" ? "male" : scenario.sex === "F" ? "female" : "other",
+          presenting_complaint: scenario.summary,
+          referring_diagnosis: scenario.referring,
+          specific_question: `Specialty: ${scenario.specialty}. Please evaluate the referring diagnosis and suggest alternatives if warranted.`,
+        };
+        result = await submitCase(payload);
+      }
       setCaseId(result.id);
       // WS messages will now drive the pipeline UI
     } catch (err) {
-      setError(err.message || "Failed to submit case");
+      setError(err.message || "Failed to submit");
       setRunning(false);
     }
   };
+  startPipelineRef.current = startPipeline;
 
   const totalElapsed = () => {
     if (!startTimeRef.current) return "";
@@ -298,10 +332,12 @@ function Dialog({ scenario, onClose }) {
             </div>
             <div>
               <div style={{ fontSize: 11, fontWeight: 600, color: scenario.color, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                {scenario.id} · {scenario.specialty}
+                {isResearch ? "Research Line" : `${scenario.id} · ${scenario.specialty}`}
               </div>
               <div style={{ fontSize: 15, fontWeight: 600, color: "#0f172a", marginTop: 2 }}>
-                {scenario.age}{scenario.sex} · BMI {scenario.bmi}
+                {isResearch
+                  ? (scenario.referring?.length > 50 ? scenario.referring.slice(0, 50) + "..." : scenario.referring)
+                  : `${scenario.age}${scenario.sex} · BMI ${scenario.bmi}`}
               </div>
             </div>
           </div>
@@ -399,7 +435,7 @@ function Dialog({ scenario, onClose }) {
                 </div>
               )}
               <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                {PIPELINE_STEPS.map((step, i) => {
+                {steps.map((step, i) => {
                   const done = completedSteps.includes(i);
                   const active = currentStep === i && !done;
                   const waiting = i > currentStep;
@@ -439,7 +475,7 @@ function Dialog({ scenario, onClose }) {
                         <span style={{ fontSize: 11, color: "#94a3b8" }}>
                           {stepDurations[i] != null
                             ? `${stepDurations[i].toFixed(1)}s`
-                            : (PIPELINE_STEPS[i].duration / 1000).toFixed(1) + "s"}
+                            : (steps[i].duration / 1000).toFixed(1) + "s"}
                         </span>
                       )}
                     </div>
@@ -459,15 +495,21 @@ function Dialog({ scenario, onClose }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                   <span style={{ fontSize: 20 }}>✅</span>
                   <span style={{ fontSize: 15, fontWeight: 700, color: "#166534" }}>
-                    Second Opinion Complete
+                    {isResearch ? "Research Report Complete" : "Second Opinion Complete"}
                   </span>
                 </div>
                 <div style={{ fontSize: 13, color: "#15803d", lineHeight: 1.6 }}>
-                  {report?.primary_diagnosis ? (
-                    <>Analysis found <strong>{report.primary_diagnosis}</strong> as the primary diagnosis. </>
-                  ) : null}
-                  {report?.evidence_claims?.length > 0 && (
-                    <>{report.evidence_claims.length} claims verified against {report.total_sources ?? 0} medical sources.</>
+                  {isResearch ? (
+                    <>Research compiled from {report?.total_sources ?? 0} sources.</>
+                  ) : (
+                    <>
+                      {report?.primary_diagnosis ? (
+                        <>Analysis found <strong>{report.primary_diagnosis}</strong> as the primary diagnosis. </>
+                      ) : null}
+                      {report?.evidence_claims?.length > 0 && (
+                        <>{report.evidence_claims.length} claims verified against {report.total_sources ?? 0} medical sources.</>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -475,7 +517,7 @@ function Dialog({ scenario, onClose }) {
               <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
                 {[
                   { label: "Sources", value: String(report?.total_sources ?? 0) },
-                  { label: "Claims", value: report?.evidence_claims ? `${report.evidence_claims.length}/${report.evidence_claims.length}` : "—" },
+                  ...(!isResearch ? [{ label: "Claims", value: report?.evidence_claims ? `${report.evidence_claims.length}/${report.evidence_claims.length}` : "—" }] : []),
                   { label: "Time", value: totalElapsed() || "—" },
                 ].map(s => (
                   <div key={s.label} style={{
@@ -693,13 +735,40 @@ function UploadPanel({ onClose }) {
   );
 }
 
+// === RESEARCH DIALOG (pipeline progress for research) ===
+function ResearchDialog({ topic, additionalContext, onClose }) {
+  return (
+    <Dialog
+      scenario={{
+        id: "RES",
+        avatar: "📚",
+        age: "",
+        sex: "",
+        bmi: "",
+        specialty: "Research",
+        referring: topic,
+        summary: additionalContext || topic,
+        color: "#6366f1",
+        tags: [],
+      }}
+      onClose={onClose}
+      pipelineType="research"
+    />
+  );
+}
+
 // === MAIN APP ===
 export default function DemoPage() {
   const [mode, setMode] = useState("demo"); // demo | upload
+  const [line, setLine] = useState("diagnosis"); // diagnosis | research
   const [selectedScenario, setSelectedScenario] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
   const [activeSpecialty, setActiveSpecialty] = useState("All");
   const [hoveredCard, setHoveredCard] = useState(null);
+  const [researchTopic, setResearchTopic] = useState("");
+  const [researchContext, setResearchContext] = useState("");
+  const [researchRunning, setResearchRunning] = useState(false);
+  const [researchCaseId, setResearchCaseId] = useState(null);
   const navigate = useNavigate();
 
   const filtered = activeSpecialty === "All"
@@ -745,23 +814,45 @@ export default function DemoPage() {
           }}>Beta</span>
         </div>
 
-        {/* Mode toggle */}
-        <div style={{
-          display: "flex", background: "#f1f5f9", borderRadius: 10, padding: 3
-        }}>
-          {[
-            { key: "demo", label: "Demo Cases" },
-            { key: "upload", label: "Upload Files" }
-          ].map(m => (
-            <button key={m.key} onClick={() => setMode(m.key)} style={{
-              padding: "8px 18px", borderRadius: 8, border: "none",
-              fontSize: 13, fontWeight: 500, cursor: "pointer",
-              background: mode === m.key ? "#fff" : "transparent",
-              color: mode === m.key ? "#0f172a" : "#94a3b8",
-              boxShadow: mode === m.key ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
-              transition: "all 0.2s"
-            }}>{m.label}</button>
-          ))}
+        {/* Line toggle */}
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{
+            display: "flex", background: "#f1f5f9", borderRadius: 10, padding: 3
+          }}>
+            {[
+              { key: "diagnosis", label: "Diagnosis Line" },
+              { key: "research", label: "Research Line" }
+            ].map(l => (
+              <button key={l.key} onClick={() => { setLine(l.key); if (l.key === "diagnosis") setMode("demo"); }} style={{
+                padding: "8px 16px", borderRadius: 8, border: "none",
+                fontSize: 12.5, fontWeight: 500, cursor: "pointer",
+                background: line === l.key ? "#fff" : "transparent",
+                color: line === l.key ? "#0f172a" : "#94a3b8",
+                boxShadow: line === l.key ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                transition: "all 0.2s"
+              }}>{l.label}</button>
+            ))}
+          </div>
+
+          {line === "diagnosis" && (
+            <div style={{
+              display: "flex", background: "#f1f5f9", borderRadius: 10, padding: 3
+            }}>
+              {[
+                { key: "demo", label: "Demo Cases" },
+                { key: "upload", label: "Upload Files" }
+              ].map(m => (
+                <button key={m.key} onClick={() => setMode(m.key)} style={{
+                  padding: "8px 16px", borderRadius: 8, border: "none",
+                  fontSize: 12.5, fontWeight: 500, cursor: "pointer",
+                  background: mode === m.key ? "#fff" : "transparent",
+                  color: mode === m.key ? "#0f172a" : "#94a3b8",
+                  boxShadow: mode === m.key ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                  transition: "all 0.2s"
+                }}>{m.label}</button>
+              ))}
+            </div>
+          )}
         </div>
 
         <button onClick={() => navigate("/submit")} style={{
@@ -780,16 +871,124 @@ export default function DemoPage() {
             fontSize: 32, fontWeight: 700, color: "#0f172a",
             letterSpacing: "-0.03em", lineHeight: 1.2
           }}>
-            {mode === "demo" ? "Select a Scenario" : "Upload Patient Files"}
+            {line === "research"
+              ? "Research a Topic"
+              : mode === "demo" ? "Select a Scenario" : "Upload Patient Files"}
           </div>
           <div style={{ fontSize: 15, color: "#64748b", marginTop: 10, maxWidth: 520, margin: "10px auto 0", lineHeight: 1.6 }}>
-            {mode === "demo"
-              ? "Each scenario loads realistic clinical data. Pick a case and get an AI-powered second opinion backed by medical literature."
-              : "Drop lab reports, imaging, discharge summaries, or any clinical documents. We'll extract the data, strip identifiers, and analyze."}
+            {line === "research"
+              ? "Enter any medical or scientific research topic. STORM will conduct deep multi-perspective research and produce a cited report."
+              : mode === "demo"
+                ? "Each scenario loads realistic clinical data. Pick a case and get an AI-powered second opinion backed by medical literature."
+                : "Drop lab reports, imaging, discharge summaries, or any clinical documents. We'll extract the data, strip identifiers, and analyze."}
           </div>
         </div>
 
-        {mode === "demo" && (
+        {line === "research" && (
+          <div style={{ maxWidth: 580, margin: "0 auto" }}>
+            <div style={{
+              background: "#fff", borderRadius: 20, padding: "32px 28px",
+              border: "1px solid #e8ecf0",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.04)"
+            }}>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a", marginBottom: 8 }}>
+                  Research Topic
+                </div>
+                <input
+                  type="text"
+                  value={researchTopic}
+                  onChange={e => setResearchTopic(e.target.value)}
+                  placeholder="e.g., SGLT2 inhibitors in heart failure with preserved ejection fraction"
+                  style={{
+                    width: "100%", padding: "12px 14px",
+                    border: "1px solid #e2e8f0", borderRadius: 10,
+                    fontSize: 14, fontFamily: "inherit", outline: "none",
+                    color: "#0f172a", boxSizing: "border-box",
+                  }}
+                  onFocus={e => e.target.style.borderColor = "#6366f1"}
+                  onBlur={e => e.target.style.borderColor = "#e2e8f0"}
+                />
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a", marginBottom: 8 }}>
+                  Additional Context <span style={{ fontWeight: 400, color: "#94a3b8" }}>(optional)</span>
+                </div>
+                <textarea
+                  value={researchContext}
+                  onChange={e => setResearchContext(e.target.value)}
+                  placeholder="Any specific angles, populations, or aspects you'd like the research to focus on..."
+                  style={{
+                    width: "100%", padding: "12px 14px",
+                    border: "1px solid #e2e8f0", borderRadius: 10,
+                    fontSize: 13, fontFamily: "inherit", resize: "vertical",
+                    minHeight: 80, outline: "none", color: "#334155",
+                    boxSizing: "border-box",
+                  }}
+                  onFocus={e => e.target.style.borderColor = "#6366f1"}
+                  onBlur={e => e.target.style.borderColor = "#e2e8f0"}
+                />
+              </div>
+
+              <button
+                disabled={researchTopic.length < 10}
+                onClick={() => {
+                  setResearchRunning(true);
+                }}
+                style={{
+                  width: "100%", padding: "14px 20px",
+                  background: researchTopic.length >= 10
+                    ? "linear-gradient(135deg, #6366f1, #4f46e5)"
+                    : "#e2e8f0",
+                  color: researchTopic.length >= 10 ? "#fff" : "#94a3b8",
+                  border: "none", borderRadius: 12,
+                  fontSize: 14, fontWeight: 600,
+                  cursor: researchTopic.length >= 10 ? "pointer" : "not-allowed",
+                  boxShadow: researchTopic.length >= 10 ? "0 4px 14px rgba(99,102,241,0.3)" : "none",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                  transition: "all 0.2s"
+                }}
+              >
+                <span style={{ fontSize: 18 }}>🌩️</span>
+                Start Research
+              </button>
+            </div>
+
+            {/* How it works */}
+            <div style={{ marginTop: 32 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "#0f172a", marginBottom: 16, textAlign: "center" }}>
+                How Research Line works
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {[
+                  { icon: "💡", title: "Topic Analysis", desc: "Gemini Flash analyzes your topic and generates focused research questions" },
+                  { icon: "🌩️", title: "STORM Research", desc: "Stanford's STORM framework conducts deep multi-perspective literature research" },
+                  { icon: "📋", title: "Report", desc: "Receive a cited research report with executive summary and full bibliography" },
+                ].map((step, i) => (
+                  <div key={i} style={{
+                    display: "flex", alignItems: "flex-start", gap: 14,
+                    padding: "14px 18px", background: "#fff", borderRadius: 14,
+                    border: "1px solid #f1f5f9"
+                  }}>
+                    <div style={{
+                      width: 38, height: 38, borderRadius: 10,
+                      background: "#f8fafc",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 18, flexShrink: 0
+                    }}>{step.icon}</div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{step.title}</div>
+                      <div style={{ fontSize: 12.5, color: "#64748b", lineHeight: 1.5, marginTop: 2 }}>{step.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {line === "diagnosis" && mode === "demo" && (
           <>
             {/* Specialty filter */}
             <div style={{
@@ -945,7 +1144,7 @@ export default function DemoPage() {
           </>
         )}
 
-        {mode === "upload" && (
+        {line === "diagnosis" && mode === "upload" && (
           <div style={{ maxWidth: 580, margin: "0 auto" }}>
             {/* Upload area */}
             <div
@@ -1044,6 +1243,13 @@ export default function DemoPage() {
         />
       )}
       {showUpload && <UploadPanel onClose={() => setShowUpload(false)} />}
+      {researchRunning && (
+        <ResearchDialog
+          topic={researchTopic}
+          additionalContext={researchContext}
+          onClose={() => setResearchRunning(false)}
+        />
+      )}
     </div>
   );
 }

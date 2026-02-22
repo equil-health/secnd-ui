@@ -4,7 +4,7 @@ import { useEffect, useRef, useCallback } from 'react';
  * Manages a WebSocket connection with auto-reconnect.
  * Closes on 'complete' or 'error' message types.
  */
-export default function useWebSocket(caseId, onMessage) {
+export default function useWebSocket(caseId, onMessage, pathPrefix = 'cases') {
   const wsRef = useRef(null);
   const reconnectTimer = useRef(null);
   const closed = useRef(false);
@@ -13,7 +13,7 @@ export default function useWebSocket(caseId, onMessage) {
     if (!caseId || closed.current) return;
 
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const url = `${protocol}://${window.location.host}/ws/cases/${caseId}/status`;
+    const url = `${protocol}://${window.location.host}/ws/${pathPrefix}/${caseId}/status`;
     const ws = new WebSocket(url);
     wsRef.current = ws;
 
@@ -43,7 +43,7 @@ export default function useWebSocket(caseId, onMessage) {
     ws.onerror = () => {
       ws.close();
     };
-  }, [caseId, onMessage]);
+  }, [caseId, onMessage, pathPrefix]);
 
   useEffect(() => {
     closed.current = false;

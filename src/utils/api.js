@@ -68,3 +68,11 @@ export async function submitCaseWithFiles(formData) {
 export function downloadUrl(id, format) {
   return `${BASE}/cases/${id}/report/${format}`;
 }
+
+export async function submitResearch(data) {
+  const res = await request(`${BASE}/research`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
