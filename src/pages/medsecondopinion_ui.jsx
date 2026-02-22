@@ -201,10 +201,9 @@ const AUDIO_PIPELINE_STEPS = [
   { icon: "\u2705", label: "Report ready", duration: 500 },
 ];
 
-// Audio pipeline: steps 1-3 are audio-specific (broadcast by route),
-// steps 2-9 from existing pipeline map to UI indices 3-10
-const AUDIO_STEP_TO_UI = { 1: 0, 2: 1, 3: 2 };
-const AUDIO_EXISTING_STEP_TO_UI = { 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9, 9: 10 };
+// Audio pipeline: steps 1-3 are handled client-side from the API response.
+// Only the existing Celery steps (2-9) arrive via WebSocket and map to UI indices 3-10.
+const AUDIO_WS_STEP_TO_UI = { 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9, 9: 10 };
 
 // === DIALOG COMPONENT ===
 function Dialog({ scenario, onClose, pipelineType = "diagnosis" }) {
@@ -808,11 +807,9 @@ function AudioDialog({ onClose }) {
   const steps = AUDIO_PIPELINE_STEPS;
   const accentColor = "#0d9488";
 
-  // Map incoming WS step numbers to UI indices
+  // Map incoming WS step numbers to UI indices (only existing pipeline steps)
   const mapStep = useCallback((step) => {
-    if (AUDIO_STEP_TO_UI[step] !== undefined) return AUDIO_STEP_TO_UI[step];
-    if (AUDIO_EXISTING_STEP_TO_UI[step] !== undefined) return AUDIO_EXISTING_STEP_TO_UI[step];
-    return undefined;
+    return AUDIO_WS_STEP_TO_UI[step];
   }, []);
 
   const handleWsMessage = useCallback((msg) => {
