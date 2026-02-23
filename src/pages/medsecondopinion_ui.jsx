@@ -114,8 +114,10 @@ const PIPELINE_STEPS = [
   { icon: "🔍", label: "Checking for hallucinations", duration: 1500 },
   { icon: "📑", label: "Extracting claims", duration: 1200 },
   { icon: "🔎", label: "Searching medical literature", duration: 2500 },
+  { icon: "🏛️", label: "Verifying citations (OpenAlex)", duration: 2000 },
   { icon: "⚖️", label: "Verifying against evidence", duration: 2000 },
   { icon: "🌩️", label: "STORM deep research", duration: 4000 },
+  { icon: "🏛️", label: "Verifying STORM citations", duration: 1500 },
   { icon: "📝", label: "Compiling report", duration: 1000 },
   { icon: "✅", label: "Report ready", duration: 500 },
 ];
@@ -178,10 +180,11 @@ const RESEARCH_PIPELINE_STEPS = [
   { icon: "✅", label: "Report ready", duration: 500 },
 ];
 
-// Map backend step numbers (1-9) to PIPELINE_STEPS indices (0-9)
-// Backend: 1=accepted, 2=medgemma, 3=cleaning, 4=validating, 5=extracting, 6=searching, 7=verifying, 8=STORM, 9=building
-// UI index 0=received maps to backend step 1, index 9=ready has no backend step (auto-set on complete)
-const BACKEND_STEP_TO_UI = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6, 8: 7, 9: 8 };
+// Map backend step numbers (1-11) to PIPELINE_STEPS indices (0-11)
+// Backend: 1=accepted, 2=medgemma, 3=cleaning, 4=validating, 5=extracting,
+// 6=searching, 7=verify_citations, 8=synthesize, 9=STORM, 10=verify_storm, 11=compile
+// UI index 0=received maps to backend step 1, index 11=ready has no backend step (auto-set on complete)
+const BACKEND_STEP_TO_UI = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6, 8: 7, 9: 8, 10: 9, 11: 10 };
 
 // Research pipeline: backend step 1=accepted(0), 2=questions(1), 3=STORM(2), 4=compile(3)
 const RESEARCH_STEP_TO_UI = { 1: 0, 2: 1, 3: 2, 4: 3 };
@@ -195,15 +198,17 @@ const AUDIO_PIPELINE_STEPS = [
   { icon: "\uD83D\uDD0D", label: "Checking for hallucinations", duration: 1500 },
   { icon: "\uD83D\uDCD1", label: "Extracting claims", duration: 1200 },
   { icon: "\uD83D\uDD0E", label: "Searching medical literature", duration: 2500 },
+  { icon: "\uD83C\uDFDB\uFE0F", label: "Verifying citations (OpenAlex)", duration: 2000 },
   { icon: "\u2696\uFE0F", label: "Verifying against evidence", duration: 2000 },
   { icon: "\uD83C\uDF29\uFE0F", label: "STORM deep research", duration: 4000 },
+  { icon: "\uD83C\uDFDB\uFE0F", label: "Verifying STORM citations", duration: 1500 },
   { icon: "\uD83D\uDCDD", label: "Compiling report", duration: 1000 },
   { icon: "\u2705", label: "Report ready", duration: 500 },
 ];
 
 // Audio pipeline: steps 1-3 are handled client-side from the API response.
-// Only the existing Celery steps (2-9) arrive via WebSocket and map to UI indices 3-10.
-const AUDIO_WS_STEP_TO_UI = { 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9, 9: 10 };
+// Only the existing Celery steps (2-11) arrive via WebSocket and map to UI indices 3-12.
+const AUDIO_WS_STEP_TO_UI = { 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9, 9: 10, 10: 11, 11: 12 };
 
 // === DIALOG COMPONENT ===
 function Dialog({ scenario, onClose, pipelineType = "diagnosis" }) {
