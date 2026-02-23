@@ -59,9 +59,16 @@ export default function HistoryPage() {
                   className="flex items-center justify-between bg-white border rounded-lg px-4 py-3 hover:border-indigo-300 transition-colors"
                 >
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">
-                      {c.presenting_complaint || 'Untitled case'}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-gray-800 truncate">
+                        {c.presenting_complaint || 'Untitled case'}
+                      </p>
+                      {c.diagnosis_mode === 'zebra' && (
+                        <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200 rounded">
+                          🦓 Zebra
+                        </span>
+                      )}
+                    </div>
                     {c.primary_diagnosis && (
                       <p className="text-xs text-gray-500 mt-0.5">
                         Dx: {c.primary_diagnosis}

@@ -30,6 +30,7 @@ export default function SubmitPage() {
   const navigate = useNavigate();
   const [caseText, setCaseText] = useState('');
   const [files, setFiles] = useState([]);
+  const [mode, setMode] = useState('standard');
   const [dragOver, setDragOver] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -91,6 +92,7 @@ export default function SubmitPage() {
     try {
       const formData = new FormData();
       formData.append('case_text', caseText.trim());
+      formData.append('mode', mode);
       for (const f of files) {
         formData.append('files', f);
       }
@@ -202,6 +204,47 @@ export default function SubmitPage() {
                 </div>
               )}
 
+              {/* Mode selector */}
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Analysis Mode
+                </label>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setMode('standard')}
+                    className={`flex-1 px-4 py-3 rounded-xl border-2 text-left transition-all ${
+                      mode === 'standard'
+                        ? 'border-indigo-500 bg-indigo-50'
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
+                  >
+                    <p className={`text-sm font-semibold ${mode === 'standard' ? 'text-indigo-700' : 'text-gray-700'}`}>
+                      Standard
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Second opinion on referring diagnosis
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode('zebra')}
+                    className={`flex-1 px-4 py-3 rounded-xl border-2 text-left transition-all ${
+                      mode === 'zebra'
+                        ? 'border-amber-500 bg-amber-50'
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
+                  >
+                    <p className={`text-sm font-semibold ${mode === 'zebra' ? 'text-amber-700' : 'text-gray-700'}`}>
+                      🦓 Think Zebra
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Rare disease differential — Orphanet, OMIM, GARD
+                    </p>
+                  </button>
+                </div>
+              </div>
+
               {/* Text area */}
               <textarea
                 ref={textareaRef}
@@ -222,9 +265,17 @@ export default function SubmitPage() {
               <button
                 onClick={handleSubmit}
                 disabled={submitting || !caseText.trim()}
-                className="mt-4 w-full py-3 text-sm font-medium text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className={`mt-4 w-full py-3 text-sm font-medium text-white rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${
+                  mode === 'zebra'
+                    ? 'bg-amber-600 hover:bg-amber-700'
+                    : 'bg-indigo-600 hover:bg-indigo-700'
+                }`}
               >
-                {submitting ? 'Submitting...' : 'Submit Case'}
+                {submitting
+                  ? 'Submitting...'
+                  : mode === 'zebra'
+                    ? '🦓 Submit — Think Zebra'
+                    : 'Submit Case'}
               </button>
             </>
           ) : (

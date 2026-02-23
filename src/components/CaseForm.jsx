@@ -22,6 +22,7 @@ export default function CaseForm() {
   const [tab, setTab] = useState('structured');
   const [form, setForm] = useState({ ...EMPTY_STRUCTURED });
   const [freeText, setFreeText] = useState('');
+  const [mode, setMode] = useState('standard'); // "standard" or "zebra"
   const [parsing, setParsing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -77,6 +78,7 @@ export default function CaseForm() {
     try {
       const payload = {
         ...form,
+        mode,
         patient_age: form.patient_age ? Number(form.patient_age) : undefined,
         lab_results: form.lab_results
           .filter((l) => l.name && l.value)
@@ -98,6 +100,7 @@ export default function CaseForm() {
       setFormOpen(false);
       setForm({ ...EMPTY_STRUCTURED });
       setFreeText('');
+      setMode('standard');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -134,6 +137,39 @@ export default function CaseForm() {
               {t === 'structured' ? 'Structured' : 'Free Text'}
             </button>
           ))}
+        </div>
+
+        {/* Mode selector */}
+        <div className="px-6 pt-4">
+          <div className="flex items-center gap-2 p-1 bg-gray-100 rounded-lg w-fit">
+            <button
+              onClick={() => setMode('standard')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                mode === 'standard'
+                  ? 'bg-white text-indigo-700 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Standard
+            </button>
+            <button
+              onClick={() => setMode('zebra')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 ${
+                mode === 'zebra'
+                  ? 'bg-white text-amber-700 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <span className="text-sm">🦓</span> Think Zebra
+            </button>
+          </div>
+          {mode === 'zebra' && (
+            <p className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              Zebra mode looks beyond common diagnoses to identify rare diseases that
+              may better explain the clinical picture. Searches target Orphanet, OMIM,
+              and NIH GARD.
+            </p>
+          )}
         </div>
 
         {/* Body */}
@@ -214,9 +250,17 @@ export default function CaseForm() {
           <button
             onClick={handleSubmit}
             disabled={submitting || (tab === 'structured' && !form.presenting_complaint)}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-40 transition-colors"
+            className={`px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-40 transition-colors ${
+              mode === 'zebra'
+                ? 'bg-amber-600 hover:bg-amber-700'
+                : 'bg-indigo-600 hover:bg-indigo-700'
+            }`}
           >
-            {submitting ? 'Submitting...' : 'Submit Case'}
+            {submitting
+              ? 'Submitting...'
+              : mode === 'zebra'
+                ? '🦓 Submit — Think Zebra'
+                : 'Submit Case'}
           </button>
         </div>
       </div>

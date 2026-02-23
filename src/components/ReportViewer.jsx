@@ -3,6 +3,7 @@ import FormattedMarkdown from '../utils/formatReport';
 import VerdictCard from './VerdictCard';
 import ReferenceList from './ReferenceList';
 import ExportButtons from './ExportButtons';
+import ZebraReportViewer from './ZebraReportViewer';
 
 const TABS = [
   { key: 'analysis', label: 'Analysis' },
@@ -14,6 +15,11 @@ export default function ReportViewer({ report, caseId }) {
   const [activeTab, setActiveTab] = useState('analysis');
 
   if (!report) return null;
+
+  // Route to ZebraReportViewer when diagnosis_mode is "zebra"
+  if (report.diagnosis_mode === 'zebra') {
+    return <ZebraReportViewer report={report} caseId={caseId} />;
+  }
 
   return (
     <div className="flex gap-4 h-full">
