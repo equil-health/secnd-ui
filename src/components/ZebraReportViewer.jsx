@@ -110,6 +110,11 @@ export default function ZebraReportViewer({ report, caseId }) {
           />
         </div>
 
+        {/* Verification Stats */}
+        {report.verification_stats && (
+          <VerificationWidget stats={report.verification_stats} />
+        )}
+
         {/* References */}
         <ReferenceList references={report.references} />
 
@@ -319,6 +324,39 @@ function QuickStat({ label, value, color = 'gray' }) {
     <div className={`border rounded-lg p-3 text-center ${colors[color]}`}>
       <p className="text-lg font-bold">{value}</p>
       <p className="text-[10px] uppercase tracking-wide text-gray-500 mt-0.5">{label}</p>
+    </div>
+  );
+}
+
+function VerificationWidget({ stats }) {
+  if (!stats) return null;
+  return (
+    <div className="bg-white border rounded-lg p-4 space-y-2">
+      <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+        Citation Verification
+      </h4>
+      <div className="flex justify-between text-sm">
+        <span className="text-gray-500">Verified</span>
+        <span className="font-medium text-green-700">
+          {stats.verified ?? 0}/{stats.total ?? 0}
+        </span>
+      </div>
+      {(stats.landmark ?? 0) > 0 && (
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-500">Landmark</span>
+          <span className="font-medium text-amber-700">{stats.landmark}</span>
+        </div>
+      )}
+      <div className="flex justify-between text-sm">
+        <span className="text-gray-500">Unverified</span>
+        <span className="font-medium text-gray-500">{stats.unverified ?? 0}</span>
+      </div>
+      {(stats.retracted ?? 0) > 0 && (
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-500">Retracted</span>
+          <span className="font-medium text-red-600">{stats.retracted}</span>
+        </div>
+      )}
     </div>
   );
 }
