@@ -838,6 +838,7 @@ function AudioDialog({ onClose }) {
   const [showTranscript, setShowTranscript] = useState(true);
   const [showReport, setShowReport] = useState(false);
   const [report, setReport] = useState(null);
+  const [mode, setMode] = useState("standard");
   const startTimeRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -909,6 +910,7 @@ function AudioDialog({ onClose }) {
     try {
       const formData = new FormData();
       formData.append("audio", file);
+      formData.append("mode", mode);
       const result = await submitAudio(formData);
       // Steps 1-3 ran synchronously on the server before this response,
       // so WS messages for them were already sent (and missed). Mark done.
@@ -1028,23 +1030,55 @@ function AudioDialog({ onClose }) {
                 )}
               </div>
 
+              <div style={{
+                display: "flex", gap: 8, marginBottom: 16,
+                background: "#f1f5f9", borderRadius: 10, padding: 4,
+              }}>
+                <button onClick={() => setMode("standard")} style={{
+                  flex: 1, padding: "10px 12px", border: "none", borderRadius: 8,
+                  fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s",
+                  background: mode === "standard" ? "#fff" : "transparent",
+                  color: mode === "standard" ? "#4f46e5" : "#64748b",
+                  boxShadow: mode === "standard" ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+                }}>
+                  🐴 Standard
+                </button>
+                <button onClick={() => setMode("zebra")} style={{
+                  flex: 1, padding: "10px 12px", border: "none", borderRadius: 8,
+                  fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s",
+                  background: mode === "zebra" ? "#fff" : "transparent",
+                  color: mode === "zebra" ? "#d97706" : "#64748b",
+                  boxShadow: mode === "zebra" ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+                }}>
+                  🦓 Think Zebra
+                </button>
+              </div>
+              {mode === "zebra" && (
+                <div style={{
+                  fontSize: 12, color: "#92400e", background: "#fffbeb",
+                  border: "1px solid #fde68a", borderRadius: 8, padding: "8px 12px",
+                  marginBottom: 16, lineHeight: 1.5,
+                }}>
+                  Zebra mode looks beyond common diagnoses to identify rare diseases. Searches target Orphanet, OMIM, and NIH GARD.
+                </div>
+              )}
               <button
                 disabled={!file}
                 onClick={handleSubmit}
                 style={{
                   width: "100%", padding: "14px 20px",
-                  background: file ? `linear-gradient(135deg, ${accentColor}, #0f766e)` : "#e2e8f0",
+                  background: file ? `linear-gradient(135deg, ${mode === "zebra" ? "#d97706" : accentColor}, ${mode === "zebra" ? "#b45309" : "#0f766e"})` : "#e2e8f0",
                   color: file ? "#fff" : "#94a3b8",
                   border: "none", borderRadius: 12,
                   fontSize: 14, fontWeight: 600,
                   cursor: file ? "pointer" : "not-allowed",
-                  boxShadow: file ? "0 4px 14px rgba(13,148,136,0.3)" : "none",
+                  boxShadow: file ? `0 4px 14px ${mode === "zebra" ? "rgba(217,119,6,0.3)" : "rgba(13,148,136,0.3)"}` : "none",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
                   transition: "all 0.2s"
                 }}
               >
-                <span style={{ fontSize: 18 }}>{"\uD83D\uDD2C"}</span>
-                Start Analysis
+                <span style={{ fontSize: 18 }}>{mode === "zebra" ? "🦓" : "\uD83D\uDD2C"}</span>
+                {mode === "zebra" ? "Think Zebra Analysis" : "Start Analysis"}
               </button>
             </>
           )}
