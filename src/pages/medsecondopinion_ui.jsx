@@ -224,6 +224,7 @@ function Dialog({ scenario, onClose, pipelineType = "diagnosis" }) {
   const [caseId, setCaseId] = useState(null);
   const [report, setReport] = useState(null);
   const [error, setError] = useState(null);
+  const [mode, setMode] = useState("standard");
   const startTimeRef = useRef(null);
 
   // Handle incoming WebSocket messages
@@ -307,6 +308,7 @@ function Dialog({ scenario, onClose, pipelineType = "diagnosis" }) {
           presenting_complaint: scenario.summary,
           referring_diagnosis: scenario.referring,
           specific_question: `Specialty: ${scenario.specialty}. Please evaluate the referring diagnosis and suggest alternatives if warranted.`,
+          mode,
         };
         result = await submitCase(payload);
       }
@@ -397,6 +399,38 @@ function Dialog({ scenario, onClose, pipelineType = "diagnosis" }) {
               <div style={{ fontSize: 13, fontWeight: 600, color: "#475569", marginBottom: 12 }}>
                 What would you like to do?
               </div>
+              <div style={{
+                display: "flex", gap: 8, marginBottom: 16,
+                background: "#f1f5f9", borderRadius: 10, padding: 4,
+              }}>
+                <button onClick={() => setMode("standard")} style={{
+                  flex: 1, padding: "10px 12px", border: "none", borderRadius: 8,
+                  fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s",
+                  background: mode === "standard" ? "#fff" : "transparent",
+                  color: mode === "standard" ? "#4f46e5" : "#64748b",
+                  boxShadow: mode === "standard" ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+                }}>
+                  🐴 Standard
+                </button>
+                <button onClick={() => setMode("zebra")} style={{
+                  flex: 1, padding: "10px 12px", border: "none", borderRadius: 8,
+                  fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s",
+                  background: mode === "zebra" ? "#fff" : "transparent",
+                  color: mode === "zebra" ? "#d97706" : "#64748b",
+                  boxShadow: mode === "zebra" ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+                }}>
+                  🦓 Think Zebra
+                </button>
+              </div>
+              {mode === "zebra" && (
+                <div style={{
+                  fontSize: 12, color: "#92400e", background: "#fffbeb",
+                  border: "1px solid #fde68a", borderRadius: 8, padding: "8px 12px",
+                  marginBottom: 16, lineHeight: 1.5,
+                }}>
+                  Zebra mode looks beyond common diagnoses to identify rare diseases. Searches target Orphanet, OMIM, and NIH GARD.
+                </div>
+              )}
               <button onClick={startPipeline} style={{
                 width: "100%", padding: "14px 20px",
                 background: `linear-gradient(135deg, ${scenario.color}, ${scenario.color}dd)`,
@@ -409,8 +443,8 @@ function Dialog({ scenario, onClose, pipelineType = "diagnosis" }) {
                 onMouseOver={e => { e.target.style.transform = "translateY(-1px)"; e.target.style.boxShadow = `0 6px 20px ${scenario.color}50`; }}
                 onMouseOut={e => { e.target.style.transform = ""; e.target.style.boxShadow = `0 4px 14px ${scenario.color}40`; }}
               >
-                <span style={{ fontSize: 18 }}>🔬</span>
-                Get a Second Opinion
+                <span style={{ fontSize: 18 }}>{mode === "zebra" ? "🦓" : "🔬"}</span>
+                {mode === "zebra" ? "Think Zebra Analysis" : "Get a Second Opinion"}
               </button>
               <button style={{
                 width: "100%", padding: "12px 20px", marginTop: 10,
