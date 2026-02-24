@@ -88,7 +88,7 @@ export default function ReportViewer({ report, caseId }) {
         {report.primary_diagnosis && (
           <div className="bg-white border rounded-lg p-4">
             <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
-              Primary Diagnosis
+              Physician Diagnosis
             </p>
             <p className="text-sm font-semibold text-gray-900">
               {report.primary_diagnosis}

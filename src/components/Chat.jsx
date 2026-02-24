@@ -8,6 +8,7 @@ export default function Chat() {
   const { messages, sendFollowup } = useChat();
   const { activeCase, setFormOpen } = useAppStore();
   const [input, setInput] = useState('');
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
   const listRef = useRef(null);
 
   useEffect(() => {
@@ -57,9 +58,26 @@ export default function Chat() {
             <p className="text-sm mt-1">
               Submit a medical case to get an AI-powered second opinion with cited evidence.
             </p>
+            <div className="mt-6 max-w-md text-left bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <p className="text-xs text-amber-800 leading-relaxed mb-3">
+                By using this portal and uploading data, you acknowledge that you have read, understood, and agree to be bound by the Critical Disclaimer, Terms of Use, and the probabilistic nature of the SECND AI reports.
+              </p>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={disclaimerAccepted}
+                  onChange={(e) => setDisclaimerAccepted(e.target.checked)}
+                  className="mt-0.5 accent-indigo-600"
+                />
+                <span className="text-xs text-amber-900 font-medium">
+                  I accept the SECND Disclaimer and acknowledge this is a research prototype.
+                </span>
+              </label>
+            </div>
             <button
               onClick={() => setFormOpen(true)}
-              className="mt-4 px-4 py-2 text-sm font-medium text-indigo-600 border border-indigo-300 rounded-lg hover:bg-indigo-50 transition-colors"
+              disabled={!disclaimerAccepted}
+              className="mt-4 px-4 py-2 text-sm font-medium text-indigo-600 border border-indigo-300 rounded-lg hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               New Case
             </button>

@@ -561,7 +561,7 @@ function Dialog({ scenario, onClose, pipelineType = "diagnosis" }) {
                   ) : (
                     <>
                       {report?.primary_diagnosis ? (
-                        <>Analysis found <strong>{report.primary_diagnosis}</strong> as the primary diagnosis. </>
+                        <>Analysis found <strong>{report.primary_diagnosis}</strong> as the physician diagnosis. </>
                       ) : null}
                       {report?.evidence_claims?.length > 0 && (
                         <>{report.evidence_claims.length} claims verified against {report.total_sources ?? 0} medical sources.</>
@@ -1212,7 +1212,7 @@ function AudioDialog({ onClose }) {
                 </div>
                 <div style={{ fontSize: 13, color: "#15803d", lineHeight: 1.6 }}>
                   {report?.primary_diagnosis ? (
-                    <>Analysis found <strong>{report.primary_diagnosis}</strong> as the primary diagnosis. </>
+                    <>Analysis found <strong>{report.primary_diagnosis}</strong> as the physician diagnosis. </>
                   ) : null}
                   {report?.evidence_claims?.length > 0 && (
                     <>{report.evidence_claims.length} claims verified against {report.total_sources ?? 0} medical sources.</>
