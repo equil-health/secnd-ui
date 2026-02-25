@@ -5,9 +5,12 @@ import useWebSocket from './useWebSocket';
 /**
  * Connects to the pipeline WebSocket and updates Zustand store
  * with step progress, completion, and errors.
+ *
+ * Skips WebSocket connection when isSimulation is true (simulation
+ * drives the store directly via useSimulation hook).
  */
 export default function usePipeline(caseId) {
-  const { setPipelineStatus } = useAppStore();
+  const { setPipelineStatus, isSimulation } = useAppStore();
 
   const handleMessage = useCallback(
     (data) => {
@@ -35,5 +38,6 @@ export default function usePipeline(caseId) {
     [setPipelineStatus],
   );
 
-  useWebSocket(caseId, handleMessage);
+  // Skip WebSocket when running a simulation
+  useWebSocket(isSimulation ? null : caseId, handleMessage);
 }

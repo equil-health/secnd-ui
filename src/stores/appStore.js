@@ -8,6 +8,8 @@ const useAppStore = create((set) => ({
   // Pipeline steps
   pipelineSteps: [],
   pipelineStatus: null, // 'running' | 'complete' | 'error'
+  isSimulation: false,
+  setSimulation: (v) => set({ isSimulation: v }),
   setPipelineSteps: (steps) => set({ pipelineSteps: steps }),
   setPipelineStatus: (status) => set({ pipelineStatus: status }),
   updateStep: (stepIndex, updates) =>
@@ -39,6 +41,7 @@ const useAppStore = create((set) => ({
       activeCase: null,
       pipelineSteps: [],
       pipelineStatus: null,
+      isSimulation: false,
       report: null,
       messages: [],
     }),
