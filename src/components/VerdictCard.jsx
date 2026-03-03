@@ -4,6 +4,7 @@ const VERDICT_COLORS = {
   SUPPORTED: 'bg-green-100 text-green-800 border-green-300',
   PARTIALLY_SUPPORTED: 'bg-amber-100 text-amber-800 border-amber-300',
   CONTRADICTED: 'bg-red-100 text-red-800 border-red-300',
+  INSUFFICIENT_EVIDENCE: 'bg-slate-100 text-slate-700 border-slate-300',
 };
 
 export default function VerdictCard({ claim }) {
