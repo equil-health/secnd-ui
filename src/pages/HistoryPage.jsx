@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { listCases } from '../utils/api';
 import useSimulation from '../hooks/useSimulation';
+import UserBadge from '../components/UserBadge';
+import SkeletonTable from '../components/SkeletonTable';
 
 const STATUS_BADGE = {
   submitted: 'bg-blue-100 text-blue-700',
@@ -47,12 +49,13 @@ export default function HistoryPage() {
           &larr; Home
         </Link>
         <h1 className="text-lg font-semibold text-gray-800">Case History</h1>
-        <span className="text-sm text-gray-400 ml-auto">{total} cases</span>
+        <span className="text-sm text-gray-400 ml-auto mr-4">{total} cases</span>
+        <UserBadge />
       </header>
 
       <main className="max-w-4xl mx-auto p-6">
         {loading ? (
-          <p className="text-sm text-gray-500">Loading...</p>
+          <SkeletonTable rows={6} cols={4} />
         ) : cases.length === 0 ? (
           <div className="text-center py-12 text-gray-400">
             <p className="text-lg">No cases yet</p>

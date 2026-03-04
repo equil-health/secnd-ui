@@ -4,6 +4,10 @@ import { submitCaseWithFiles } from '../utils/api';
 import useAppStore from '../stores/appStore';
 import usePipeline from '../hooks/usePipeline';
 import PipelineTracker from '../components/PipelineTracker';
+import UserBadge from '../components/UserBadge';
+import useAuthStore from '../stores/authStore';
+import useToastStore from '../stores/toastStore';
+import { getMe } from '../utils/api';
 
 const ALLOWED_TYPES = [
   'application/pdf',
@@ -40,6 +44,14 @@ export default function SubmitPage() {
   const textareaRef = useRef(null);
 
   const { pipelineStatus, setActiveCase, setPipelineSteps, setPipelineStatus } = useAppStore();
+  const { user, updateUser } = useAuthStore();
+  const addToast = useToastStore((s) => s.addToast);
+
+  const isDemo = user?.is_demo;
+  const maxReports = user?.max_reports;
+  const reportsUsed = user?.reports_used ?? 0;
+  const remaining = maxReports != null ? maxReports - reportsUsed : null;
+  const atLimit = isDemo && remaining != null && remaining <= 0;
 
   // Connect pipeline WebSocket after submission
   usePipeline(caseId);
@@ -105,6 +117,18 @@ export default function SubmitPage() {
       setCaseId(result.id);
       setActiveCase(result);
       setSubmitted(true);
+      addToast('Case submitted — pipeline started', 'success');
+
+      // Refresh user profile to update reports_used
+      try {
+        const me = await getMe();
+        updateUser(me);
+        if (me.is_demo && me.max_reports != null) {
+          const rem = me.max_reports - me.reports_used;
+          if (rem <= 2 && rem > 0) addToast(`You have ${rem} report${rem === 1 ? '' : 's'} remaining`, 'warning');
+        }
+      } catch {}
+
     } catch (err) {
       setError(err.message || 'Submission failed. Please try again.');
     } finally {
@@ -126,6 +150,7 @@ export default function SubmitPage() {
           <Link to="/history" className="text-sm text-gray-500 hover:text-gray-700">
             History
           </Link>
+          <UserBadge />
         </nav>
       </header>
 
@@ -134,6 +159,21 @@ export default function SubmitPage() {
         <div className="flex-1 flex flex-col max-w-3xl mx-auto w-full p-6 overflow-y-auto">
           {!submitted ? (
             <>
+              {/* Demo limit banner */}
+              {isDemo && remaining != null && remaining > 0 && remaining <= 2 && (
+                <div className="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                  </svg>
+                  You have <strong>{remaining} of {maxReports}</strong> reports remaining
+                </div>
+              )}
+              {atLimit && (
+                <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 text-center">
+                  <strong>Report limit reached</strong> — contact admin for more access
+                </div>
+              )}
+
               {/* Welcome */}
               <div className="text-center mb-8">
                 <h2 className="text-2xl font-bold text-gray-800">Submit a Case</h2>
@@ -264,7 +304,7 @@ export default function SubmitPage() {
               {/* Submit */}
               <button
                 onClick={handleSubmit}
-                disabled={submitting || !caseText.trim()}
+                disabled={submitting || !caseText.trim() || atLimit}
                 className={`mt-4 w-full py-3 text-sm font-medium text-white rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${
                   mode === 'zebra'
                     ? 'bg-amber-600 hover:bg-amber-700'

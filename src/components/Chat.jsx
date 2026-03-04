@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import useAppStore from '../stores/appStore';
 import useChat from '../hooks/useChat';
 import ChatMessage from './ChatMessage';
+import UserBadge from './UserBadge';
 
 export default function Chat() {
   const { messages, sendFollowup } = useChat();
@@ -46,6 +47,7 @@ export default function Chat() {
           >
             History
           </Link>
+          <UserBadge />
         </div>
       </header>
 

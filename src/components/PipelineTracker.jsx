@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import useAppStore from '../stores/appStore';
 
 const STATUS_STYLES = {
@@ -29,8 +30,21 @@ const STATUS_STYLES = {
 
 export default function PipelineTracker() {
   const { pipelineSteps, pipelineStatus } = useAppStore();
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    if (pipelineStatus === 'complete' || pipelineStatus === 'error') return;
+    if (!pipelineSteps || pipelineSteps.length === 0) return;
+    const start = Date.now();
+    const timer = setInterval(() => setElapsed(((Date.now() - start) / 1000).toFixed(0)), 1000);
+    return () => clearInterval(timer);
+  }, [pipelineSteps?.length > 0, pipelineStatus]);
 
   if (!pipelineSteps || pipelineSteps.length === 0) return null;
+
+  const totalDuration = pipelineSteps
+    .filter((s) => s.duration_s != null)
+    .reduce((sum, s) => sum + s.duration_s, 0);
 
   return (
     <div className="bg-white rounded-xl border p-4">
@@ -88,12 +102,18 @@ export default function PipelineTracker() {
           );
         })}
       </div>
-      {pipelineStatus === 'complete' && (
-        <p className="text-xs text-green-600 font-medium mt-2">Pipeline complete</p>
-      )}
-      {pipelineStatus === 'error' && (
-        <p className="text-xs text-red-600 font-medium mt-2">Pipeline encountered an error</p>
-      )}
+      {/* Timing footer */}
+      <div className="flex items-center justify-between mt-2">
+        {pipelineStatus === 'complete' ? (
+          <p className="text-xs text-green-600 font-medium">
+            Pipeline complete {totalDuration > 0 && `(${totalDuration.toFixed(1)}s)`}
+          </p>
+        ) : pipelineStatus === 'error' ? (
+          <p className="text-xs text-red-600 font-medium">Pipeline encountered an error</p>
+        ) : elapsed > 0 ? (
+          <p className="text-xs text-gray-400">Elapsed: {elapsed}s</p>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -1,8 +1,12 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { submitResearch, confirmResearch, getReport } from '../utils/api';
 import useWebSocket from '../hooks/useWebSocket';
 import ResearchReportViewer from '../components/ResearchReportViewer';
+import UserBadge from '../components/UserBadge';
+import useAuthStore from '../stores/authStore';
+import useToastStore from '../stores/toastStore';
+import { getMe } from '../utils/api';
 
 const STEPS_V1 = [
   { label: 'Topic accepted' },
@@ -99,6 +103,28 @@ export default function ResearchPage() {
   const [report, setReport] = useState(null);
   const [useV2, setUseV2] = useState(false);
   const [disambiguation, setDisambiguation] = useState(null);
+  const [elapsed, setElapsed] = useState(0);
+  const timerRef = useRef(null);
+
+  // Elapsed timer for running phase
+  useEffect(() => {
+    if (phase === 'running') {
+      const start = Date.now();
+      timerRef.current = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 1000);
+    } else {
+      clearInterval(timerRef.current);
+    }
+    return () => clearInterval(timerRef.current);
+  }, [phase]);
+
+  const { user: authUser, updateUser: updateAuthUser } = useAuthStore();
+  const addToast = useToastStore((s) => s.addToast);
+
+  const isDemo = authUser?.is_demo;
+  const maxReports = authUser?.max_reports;
+  const reportsUsed = authUser?.reports_used ?? 0;
+  const remaining = maxReports != null ? maxReports - reportsUsed : null;
+  const atLimit = isDemo && remaining != null && remaining <= 0;
 
   const steps = useV2 ? STEPS_V2 : STEPS_V1;
 
@@ -123,6 +149,7 @@ export default function ResearchPage() {
       setProgressMsg('Report ready');
 
       const caseId = data.case_id || researchId;
+      addToast('Your report is ready', 'success');
       if (caseId) {
         getReport(caseId).then(r => {
           setReport(r);
@@ -135,8 +162,10 @@ export default function ResearchPage() {
         setPhase('complete');
       }
     } else if (data.type === 'error') {
-      setError(data.error || data.message || 'Research failed');
+      const errMsg = data.error || data.message || 'Research failed';
+      setError(errMsg);
       setPhase('error');
+      addToast(`Pipeline failed: ${errMsg}`, 'error');
     }
   }, [researchId, steps]);
 
@@ -164,9 +193,13 @@ export default function ResearchPage() {
       if (researchIntent) payload.research_intent = researchIntent;
 
       // Use raw fetch to intercept 409 disambiguation responses
+      const token = localStorage.getItem('secnd_token') || '';
       const res = await fetch('/api/research', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(payload),
       });
 
@@ -186,6 +219,9 @@ export default function ResearchPage() {
       setResearchId(result.id);
       setCompletedSteps(new Set([0]));
       setProgressMsg('Topic accepted');
+
+      // Refresh user profile
+      try { const me = await getMe(); updateAuthUser(me); } catch {}
     } catch (err) {
       setError(err.message);
       setPhase('error');
@@ -251,6 +287,7 @@ export default function ResearchPage() {
           <Link to="/" className="text-xl font-bold text-teal-700 hover:text-teal-600 transition">
             SECND <span className="text-sm font-normal text-gray-400 ml-1">Research Base</span>
           </Link>
+          <div className="flex items-center gap-4">
           {phase === 'complete' && (
             <button
               onClick={handleReset}
@@ -262,6 +299,8 @@ export default function ResearchPage() {
               New Research
             </button>
           )}
+          <UserBadge />
+          </div>
         </div>
       </header>
 
@@ -272,6 +311,21 @@ export default function ResearchPage() {
           <p className="mt-2 text-gray-500">
             Enter any medical topic to generate a comprehensive research article with citations.
           </p>
+
+          {/* Demo limit banner */}
+          {isDemo && remaining != null && remaining > 0 && remaining <= 2 && (
+            <div className="mt-6 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800 flex items-center gap-2">
+              <svg className="w-4 h-4 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+              You have <strong>{remaining} of {maxReports}</strong> reports remaining
+            </div>
+          )}
+          {atLimit && (
+            <div className="mt-6 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 text-center">
+              <strong>Report limit reached</strong> — contact admin for more access
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-6">
             <div>
@@ -341,7 +395,7 @@ export default function ResearchPage() {
 
             <button
               type="submit"
-              disabled={submitting || !topic.trim()}
+              disabled={submitting || !topic.trim() || atLimit}
               className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-3 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
               {submitting ? (
@@ -435,6 +489,9 @@ export default function ResearchPage() {
           <ProgressBar currentStep={currentStep} completedSteps={completedSteps} stepLabels={stepLabels} steps={steps} />
           {progressMsg && (
             <p className="text-center text-sm text-teal-600 animate-pulse">{progressMsg}</p>
+          )}
+          {elapsed > 0 && (
+            <p className="text-center text-xs text-gray-400 mt-2">Elapsed: {elapsed}s</p>
           )}
         </main>
       )}

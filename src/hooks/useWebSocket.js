@@ -13,7 +13,8 @@ export default function useWebSocket(caseId, onMessage, pathPrefix = 'cases') {
     if (!caseId || closed.current) return;
 
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const url = `${protocol}://${window.location.host}/ws/${pathPrefix}/${caseId}/status`;
+    const token = localStorage.getItem('secnd_token') || '';
+    const url = `${protocol}://${window.location.host}/ws/${pathPrefix}/${caseId}/status?token=${encodeURIComponent(token)}`;
     const ws = new WebSocket(url);
     wsRef.current = ws;
 

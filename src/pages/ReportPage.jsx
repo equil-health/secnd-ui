@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getReport } from '../utils/api';
 import ReportViewer from '../components/ReportViewer';
+import SkeletonReport from '../components/SkeletonReport';
+import UserBadge from '../components/UserBadge';
 
 export default function ReportPage() {
   const { id } = useParams();
@@ -24,12 +26,11 @@ export default function ReportPage() {
           &larr; Home
         </Link>
         <h1 className="text-lg font-semibold text-gray-800">Report</h1>
+        <div className="ml-auto"><UserBadge /></div>
       </header>
 
       <main className="p-6">
-        {loading && (
-          <p className="text-sm text-gray-500">Loading report...</p>
-        )}
+        {loading && <SkeletonReport />}
         {error && (
           <p className="text-sm text-red-600">Error: {error}</p>
         )}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import useAppStore from '../stores/appStore';
+import useToastStore from '../stores/toastStore';
 import usePipeline from '../hooks/usePipeline';
 import { getReport } from '../utils/api';
 import Chat from '../components/Chat';
@@ -10,6 +11,7 @@ import ReportViewer from '../components/ReportViewer';
 export default function HomePage() {
   const { activeCase, pipelineStatus, report, setReport, addMessage } =
     useAppStore();
+  const addToast = useToastStore((s) => s.addToast);
 
   // Connect to pipeline WebSocket when a case is active
   usePipeline(activeCase?.id);
@@ -20,6 +22,7 @@ export default function HomePage() {
       getReport(activeCase.id)
         .then((r) => {
           setReport(r);
+          addToast('Your report is ready', 'success');
           addMessage({
             role: 'ai',
             content: 'Report is ready. You can view the full analysis below or ask follow-up questions.',

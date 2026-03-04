@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import FormattedMarkdown from '../utils/formatReport';
 import VerdictCard from './VerdictCard';
 import ReferenceList from './ReferenceList';
@@ -21,8 +21,42 @@ export default function ReportViewer({ report, caseId }) {
     return <ZebraReportViewer report={report} caseId={caseId} />;
   }
 
+  // Parse TOC from analysis markdown
+  const tocItems = [];
+  const content = activeTab === 'analysis' ? (report.medgemma_analysis || '') :
+    activeTab === 'literature' ? (report.storm_article || '') : '';
+  if (content) {
+    const headingRegex = /^(#{1,3})\s+(.+)$/gm;
+    let match;
+    while ((match = headingRegex.exec(content)) !== null) {
+      const level = match[1].length;
+      const text = match[2].replace(/\*+/g, '').trim();
+      const id = text.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      tocItems.push({ level, text, id });
+    }
+  }
+
   return (
     <div className="flex gap-4 h-full">
+      {/* TOC sidebar */}
+      {tocItems.length > 3 && (
+        <nav className="hidden xl:block w-48 shrink-0 sticky top-20 max-h-[70vh] overflow-y-auto pr-2">
+          <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-2">Contents</p>
+          <ul className="space-y-1">
+            {tocItems.map((item, i) => (
+              <li key={i} style={{ paddingLeft: `${(item.level - 1) * 12}px` }}>
+                <a
+                  href={`#${item.id}`}
+                  className="text-xs text-gray-500 hover:text-indigo-600 transition-colors block truncate"
+                >
+                  {item.text}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
+
       {/* Main content */}
       <div className="flex-1 min-w-0">
         {/* Tabs */}
