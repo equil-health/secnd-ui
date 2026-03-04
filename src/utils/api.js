@@ -88,3 +88,11 @@ export async function submitResearch(data) {
   });
   return res.json();
 }
+
+export async function confirmResearch(data) {
+  const res = await request(`${BASE}/research/confirm`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}

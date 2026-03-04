@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { submitResearch, getReport } from '../utils/api';
+import { submitResearch, confirmResearch, getReport } from '../utils/api';
 import useWebSocket from '../hooks/useWebSocket';
 import ResearchReportViewer from '../components/ResearchReportViewer';
 
@@ -98,6 +98,7 @@ export default function ResearchPage() {
   const [progressMsg, setProgressMsg] = useState('');
   const [report, setReport] = useState(null);
   const [useV2, setUseV2] = useState(false);
+  const [disambiguation, setDisambiguation] = useState(null);
 
   const steps = useV2 ? STEPS_V2 : STEPS_V1;
 
@@ -150,6 +151,7 @@ export default function ResearchPage() {
     setSubmitting(true);
     setError(null);
     setReport(null);
+    setDisambiguation(null);
     setPhase('running');
     setCurrentStep(0);
     setCompletedSteps(new Set());
@@ -161,7 +163,57 @@ export default function ResearchPage() {
       if (specialty) payload.specialty = specialty;
       if (researchIntent) payload.research_intent = researchIntent;
 
-      const result = await submitResearch(payload);
+      // Use raw fetch to intercept 409 disambiguation responses
+      const res = await fetch('/api/research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.status === 409) {
+        const data = await res.json();
+        setDisambiguation(data);
+        setPhase('disambiguate');
+        return;
+      }
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(err.detail || res.statusText);
+      }
+
+      const result = await res.json();
+      setResearchId(result.id);
+      setCompletedSteps(new Set([0]));
+      setProgressMsg('Topic accepted');
+    } catch (err) {
+      setError(err.message);
+      setPhase('error');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleConfirmResearch(confirmedTopic) {
+    setSubmitting(true);
+    setError(null);
+    setDisambiguation(null);
+    setPhase('running');
+    setCurrentStep(0);
+    setCompletedSteps(new Set());
+    setStepLabels({});
+    setProgressMsg('Submitting confirmed topic...');
+
+    try {
+      const payload = {
+        original_topic: topic.trim(),
+        confirmed_topic: confirmedTopic,
+        confirmed_as_medical: true,
+      };
+      if (specialty) payload.specialty = specialty;
+      if (researchIntent) payload.research_intent = researchIntent;
+
+      const result = await confirmResearch(payload);
       setResearchId(result.id);
       setCompletedSteps(new Set([0]));
       setProgressMsg('Topic accepted');
@@ -186,6 +238,7 @@ export default function ResearchPage() {
     setSpecialty('');
     setResearchIntent('');
     setUseV2(false);
+    setDisambiguation(null);
   }
 
   const caseId = report?.case_id || researchId;
@@ -301,6 +354,64 @@ export default function ResearchPage() {
               )}
             </button>
           </form>
+        </main>
+      )}
+
+      {/* ── Disambiguation ── */}
+      {phase === 'disambiguate' && disambiguation && (
+        <main className="mx-auto max-w-3xl px-6 py-12 animate-fade-in-up">
+          <div className="rounded-xl bg-amber-50 border-2 border-amber-200 p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <svg className="w-6 h-6 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+              <div>
+                <h2 className="text-lg font-bold text-amber-800">Ambiguous Term Detected</h2>
+                <p className="text-sm text-amber-700 mt-1">
+                  The term <strong>"{disambiguation.ambiguous_term}"</strong> in your topic has different meanings in medical and non-medical contexts. Please confirm the intended interpretation.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+              {/* Medical interpretation — clickable */}
+              <button
+                onClick={() => handleConfirmResearch(disambiguation.medical_interpretation || topic.trim())}
+                disabled={submitting}
+                className="text-left rounded-xl border-2 border-teal-300 bg-white p-4 hover:bg-teal-50 hover:border-teal-400 transition cursor-pointer disabled:opacity-50"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="px-2 py-0.5 bg-teal-100 text-teal-700 text-xs font-semibold rounded-full">Recommended</span>
+                </div>
+                <h3 className="font-semibold text-teal-800">Medical Interpretation</h3>
+                <p className="text-sm text-teal-700 mt-1">{disambiguation.medical_meaning}</p>
+                {disambiguation.medical_interpretation && (
+                  <p className="text-xs text-teal-600 mt-2 italic">"{disambiguation.medical_interpretation}"</p>
+                )}
+              </button>
+
+              {/* Non-medical interpretation — disabled */}
+              <div className="rounded-xl border-2 border-gray-200 bg-gray-50 p-4 opacity-60 cursor-not-allowed">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="px-2 py-0.5 bg-gray-200 text-gray-500 text-xs font-semibold rounded-full">Not supported</span>
+                </div>
+                <h3 className="font-semibold text-gray-500">Non-Medical Interpretation</h3>
+                <p className="text-sm text-gray-400 mt-1">{disambiguation.non_medical_meaning}</p>
+                {disambiguation.non_medical_interpretation && (
+                  <p className="text-xs text-gray-400 mt-2 italic">"{disambiguation.non_medical_interpretation}"</p>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => { setDisambiguation(null); setPhase('input'); }}
+                className="text-sm text-amber-700 underline hover:text-amber-900 transition"
+              >
+                Edit my topic instead
+              </button>
+            </div>
+          </div>
         </main>
       )}
 
