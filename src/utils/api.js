@@ -1,16 +1,97 @@
 const BASE = '/api';
 
+function getToken() {
+  return localStorage.getItem('secnd_token');
+}
+
+function authHeaders() {
+  const token = getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function handle401() {
+  localStorage.removeItem('secnd_token');
+  localStorage.removeItem('secnd_user');
+  if (window.location.pathname !== '/login') {
+    window.location.href = '/login';
+  }
+}
+
 async function request(url, options = {}) {
   const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
+    headers: { 'Content-Type': 'application/json', ...authHeaders(), ...options.headers },
     ...options,
   });
+  if (res.status === 401) {
+    handle401();
+    throw new Error('Session expired — please log in again');
+  }
+  if (res.status === 403) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    const detail = err.detail || '';
+    if (detail.toLowerCase().includes('expired') || detail.toLowerCase().includes('limit')) {
+      throw new Error(detail);
+    }
+    throw new Error(detail || 'Access denied');
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || res.statusText);
   }
   return res;
 }
+
+// ── Auth ─────────────────────────────────────────────────────────
+
+export async function login(email, password) {
+  const res = await request(`${BASE}/auth/login`, {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+  return res.json();
+}
+
+export async function getMe() {
+  const res = await request(`${BASE}/auth/me`);
+  return res.json();
+}
+
+// ── Admin ────────────────────────────────────────────────────────
+
+export async function adminGetStats() {
+  const res = await request(`${BASE}/admin/stats`);
+  return res.json();
+}
+
+export async function adminListUsers() {
+  const res = await request(`${BASE}/admin/users`);
+  return res.json();
+}
+
+export async function adminCreateUser(data) {
+  const res = await request(`${BASE}/admin/users`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export async function adminUpdateUser(id, data) {
+  const res = await request(`${BASE}/admin/users/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export async function adminDeleteUser(id) {
+  const res = await request(`${BASE}/admin/users/${id}`, {
+    method: 'DELETE',
+  });
+  return res.json();
+}
+
+// ── Cases ────────────────────────────────────────────────────────
 
 export async function submitCase(data) {
   const res = await request(`${BASE}/cases`, {
@@ -56,8 +137,10 @@ export async function listCases(page = 1, perPage = 20) {
 export async function submitCaseWithFiles(formData) {
   const res = await fetch(`${BASE}/cases/submit-with-files`, {
     method: 'POST',
+    headers: authHeaders(),
     body: formData,
   });
+  if (res.status === 401) { handle401(); throw new Error('Session expired'); }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || res.statusText);
@@ -72,8 +155,10 @@ export function downloadUrl(id, format) {
 export async function submitAudio(formData) {
   const res = await fetch(`${BASE}/cases/audio`, {
     method: 'POST',
+    headers: authHeaders(),
     body: formData,
   });
+  if (res.status === 401) { handle401(); throw new Error('Session expired'); }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || res.statusText);
@@ -94,5 +179,50 @@ export async function confirmResearch(data) {
     method: 'POST',
     body: JSON.stringify(data),
   });
+  return res.json();
+}
+
+// ── Pulse ────────────────────────────────────────────────────────
+
+export async function getPulsePreferences() {
+  const res = await request(`${BASE}/pulse/preferences`);
+  return res.json();
+}
+
+export async function upsertPulsePreferences(data) {
+  const res = await request(`${BASE}/pulse/preferences`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export async function getLatestPulseDigest() {
+  const res = await request(`${BASE}/pulse/digests/latest`);
+  return res.json();
+}
+
+export async function listPulseDigests(page = 1, perPage = 10) {
+  const res = await request(`${BASE}/pulse/digests?page=${page}&per_page=${perPage}`);
+  return res.json();
+}
+
+export async function getPulseDigest(id) {
+  const res = await request(`${BASE}/pulse/digests/${id}`);
+  return res.json();
+}
+
+export async function triggerPulseDigest() {
+  const res = await request(`${BASE}/pulse/digests/generate`, { method: 'POST' });
+  return res.json();
+}
+
+export async function getPulseJournals() {
+  const res = await request(`${BASE}/pulse/journals`);
+  return res.json();
+}
+
+export async function getPulseSpecialties() {
+  const res = await request(`${BASE}/pulse/specialties`);
   return res.json();
 }

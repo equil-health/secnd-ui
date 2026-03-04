@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import UserBadge from '../components/UserBadge';
 
 const CARDS = [
   {
@@ -26,6 +27,18 @@ const CARDS = [
     ),
     accent: 'teal',
   },
+  {
+    id: 'pulse',
+    title: 'Pulse',
+    description:
+      'Personalized medical literature digest. Stay current with recent research from top journals, summarized for your specialty.',
+    icon: (
+      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+      </svg>
+    ),
+    accent: 'amber',
+  },
 ];
 
 const accentClasses = {
@@ -41,6 +54,12 @@ const accentClasses = {
     button: 'bg-teal-600 hover:bg-teal-700 text-white',
     buttonOutline: 'border border-teal-300 text-teal-700 hover:bg-teal-50',
   },
+  amber: {
+    border: 'border-amber-200 hover:border-amber-400',
+    icon: 'bg-amber-100 text-amber-600',
+    button: 'bg-amber-600 hover:bg-amber-700 text-white',
+    buttonOutline: 'border border-amber-300 text-amber-700 hover:bg-amber-50',
+  },
 };
 
 export default function LandingPage() {
@@ -50,6 +69,8 @@ export default function LandingPage() {
   function handleCardClick(card) {
     if (card.id === 'research') {
       navigate('/research');
+    } else if (card.id === 'pulse') {
+      navigate('/pulse');
     } else {
       setExpanded((prev) => !prev);
     }
@@ -57,6 +78,11 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* User badge bar */}
+      <div className="bg-white/80 backdrop-blur border-b px-6 py-2 flex justify-end">
+        <UserBadge />
+      </div>
+
       {/* Hero */}
       <section className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-700 to-teal-600">
         <div className="absolute inset-0 opacity-10">
@@ -81,7 +107,7 @@ export default function LandingPage() {
 
       {/* Cards */}
       <section className="mx-auto max-w-5xl px-6 -mt-12 pb-20">
-        <div className="grid gap-6 sm:grid-cols-2">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {CARDS.map((card, i) => {
             const ac = accentClasses[card.accent];
             const isSecondOpinion = card.id === 'second-opinion';
@@ -116,8 +142,10 @@ export default function LandingPage() {
                   )}
 
                   {!isSecondOpinion && (
-                    <div className="mt-3 flex items-center text-sm text-teal-500 font-medium">
-                      Start researching
+                    <div className={`mt-3 flex items-center text-sm font-medium ${
+                      card.id === 'pulse' ? 'text-amber-500' : 'text-teal-500'
+                    }`}>
+                      {card.id === 'pulse' ? 'Open Pulse' : 'Start researching'}
                       <svg className="ml-1 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                       </svg>
