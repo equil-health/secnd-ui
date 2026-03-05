@@ -35,11 +35,21 @@ export default function PulsePage() {
   async function handleGenerate() {
     try {
       await generate();
-      addToast('Digest generation started! It may take a minute.', 'success');
-      // Poll for completion after a short delay
-      setTimeout(() => {
-        fetchLatestDigest();
-        fetchDigests();
+      addToast('Digest generation started! This usually takes 20-30 seconds.', 'success');
+      const pollStart = new Date();
+      let attempts = 0;
+      const maxAttempts = 18;
+      const pollInterval = setInterval(async () => {
+        attempts++;
+        await fetchLatestDigest();
+        await fetchDigests();
+        const latest = usePulseStore.getState().latestDigest;
+        if (latest && latest.generated_at && new Date(latest.generated_at) > pollStart) {
+          clearInterval(pollInterval);
+        }
+        if (attempts >= maxAttempts) {
+          clearInterval(pollInterval);
+        }
       }, 5000);
     } catch (err) {
       addToast(err.message || 'Failed to trigger digest', 'error');
