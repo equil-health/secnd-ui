@@ -16,6 +16,7 @@ export default function PulsePage() {
 
   const [showPrefs, setShowPrefs] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [digestPending, setDigestPending] = useState(false);
 
   useEffect(() => {
     async function init() {
@@ -35,6 +36,7 @@ export default function PulsePage() {
   async function handleGenerate() {
     try {
       await generate();
+      setDigestPending(true);
       addToast('Digest generation started! This usually takes 20-30 seconds.', 'success');
       const pollStart = new Date();
       let attempts = 0;
@@ -46,12 +48,16 @@ export default function PulsePage() {
         const latest = usePulseStore.getState().latestDigest;
         if (latest && latest.generated_at && new Date(latest.generated_at) > pollStart) {
           clearInterval(pollInterval);
+          setDigestPending(false);
+          addToast('New digest ready!', 'success');
         }
         if (attempts >= maxAttempts) {
           clearInterval(pollInterval);
+          setDigestPending(false);
         }
       }, 5000);
     } catch (err) {
+      setDigestPending(false);
       addToast(err.message || 'Failed to trigger digest', 'error');
     }
   }
@@ -164,8 +170,28 @@ export default function PulsePage() {
               </div>
             )}
 
-            {/* Latest digest (hidden when viewing a selected historical digest) */}
-            {!selectedDigest && loading && !latestDigest && (
+            {/* Generating state — replaces old digest while new one is being created */}
+            {!selectedDigest && digestPending && (
+              <div className="bg-white rounded-2xl border border-amber-200 p-8 text-center">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-100 mb-4">
+                  <svg className="w-6 h-6 text-amber-600 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                </div>
+                <p className="text-sm font-medium text-gray-900">Generating your new digest...</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Searching PubMed for <strong>{preferences?.specialty}</strong> articles
+                  {preferences?.topics?.length > 0 && (
+                    <> on {preferences.topics.join(', ')}</>
+                  )}
+                </p>
+                <p className="text-xs text-gray-400 mt-2">This usually takes 20-30 seconds</p>
+              </div>
+            )}
+
+            {/* Latest digest (hidden when viewing a selected historical digest or generating) */}
+            {!selectedDigest && !digestPending && loading && !latestDigest && (
               <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
                 <div className="animate-pulse space-y-3">
                   <div className="h-4 bg-gray-200 rounded w-1/3 mx-auto" />
@@ -175,9 +201,9 @@ export default function PulsePage() {
               </div>
             )}
 
-            {!selectedDigest && !loading && latestDigest && <PulseDigestCard digest={latestDigest} />}
+            {!selectedDigest && !digestPending && !loading && latestDigest && <PulseDigestCard digest={latestDigest} />}
 
-            {!selectedDigest && !loading && !latestDigest && (
+            {!selectedDigest && !digestPending && !loading && !latestDigest && (
               <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
                 <p className="text-gray-500 text-sm">
                   No digests yet. Click <strong>Generate Now</strong> to create your first one!
