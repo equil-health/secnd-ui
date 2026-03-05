@@ -68,7 +68,7 @@ export default function PulsePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top bar */}
-      <div className="bg-white/80 backdrop-blur border-b px-6 py-2 flex items-center justify-between">
+      <div className="bg-white/80 backdrop-blur border-b px-6 py-3 flex items-center justify-between">
         <button
           onClick={() => navigate('/')}
           className="text-sm text-gray-500 hover:text-gray-800 flex items-center gap-1"
@@ -89,7 +89,7 @@ export default function PulsePage() {
             backgroundSize: '40px 40px',
           }} />
         </div>
-        <div className="relative mx-auto max-w-4xl px-6 py-12 pb-20 text-center">
+        <div className="relative mx-auto max-w-4xl px-6 py-12 text-center">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">Pulse</h1>
           <p className="mt-2 text-amber-100 text-sm sm:text-base">
             Personalized medical literature digest — stay current with the research that matters to you.
@@ -97,7 +97,7 @@ export default function PulsePage() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-4xl px-6 -mt-6 pb-20">
+      <div className="mx-auto max-w-4xl px-6 mt-8 pb-20">
         {/* Setup phase — no preferences yet */}
         {isSetup && (
           <div className="bg-white rounded-2xl shadow-lg border border-amber-200 p-8">

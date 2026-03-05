@@ -45,7 +45,7 @@ export default function LoginPage() {
             }}
           />
         </div>
-        <div className="relative mx-auto max-w-5xl px-6 py-16 pb-24 text-center">
+        <div className="relative mx-auto max-w-5xl px-6 py-16 text-center">
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white">
             SECND
           </h1>
@@ -56,7 +56,7 @@ export default function LoginPage() {
       </section>
 
       {/* Login card */}
-      <div className="flex-1 flex items-start justify-center -mt-10 px-6 pb-16">
+      <div className="flex-1 flex items-start justify-center mt-8 px-6 pb-16">
         <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl border p-8">
           <h2 className="text-xl font-bold text-gray-900 text-center mb-6">
             Sign In
