@@ -45,7 +45,7 @@ export default function LoginPage() {
             }}
           />
         </div>
-        <div className="relative mx-auto max-w-5xl px-6 py-16 text-center">
+        <div className="relative mx-auto max-w-5xl px-6 py-16 pb-24 text-center">
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white">
             SECND
           </h1>

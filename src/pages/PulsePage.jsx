@@ -89,7 +89,7 @@ export default function PulsePage() {
             backgroundSize: '40px 40px',
           }} />
         </div>
-        <div className="relative mx-auto max-w-4xl px-6 py-12 text-center">
+        <div className="relative mx-auto max-w-4xl px-6 py-12 pb-20 text-center">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">Pulse</h1>
           <p className="mt-2 text-amber-100 text-sm sm:text-base">
             Personalized medical literature digest — stay current with the research that matters to you.
