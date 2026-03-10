@@ -91,6 +91,33 @@ export async function adminDeleteUser(id) {
   return res.json();
 }
 
+// ── Usage Dashboard ─────────────────────────────────────────────
+
+export async function adminGetUsageSummary(days = 7) {
+  const res = await request(`${BASE}/admin/usage/summary?days=${days}`);
+  return res.json();
+}
+
+export async function adminGetUsageByModule(days = 7) {
+  const res = await request(`${BASE}/admin/usage/by-module?days=${days}`);
+  return res.json();
+}
+
+export async function adminGetUsageByCase(caseId) {
+  const res = await request(`${BASE}/admin/usage/by-case/${caseId}`);
+  return res.json();
+}
+
+export async function adminGetUsageTimeline(days = 7, groupBy = 'hour') {
+  const res = await request(`${BASE}/admin/usage/timeline?days=${days}&group_by=${groupBy}`);
+  return res.json();
+}
+
+export async function adminGetUsageErrors(days = 7, limit = 50) {
+  const res = await request(`${BASE}/admin/usage/errors?days=${days}&limit=${limit}`);
+  return res.json();
+}
+
 // ── Cases ────────────────────────────────────────────────────────
 
 export async function submitCase(data) {

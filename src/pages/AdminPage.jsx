@@ -6,6 +6,9 @@ import {
   adminCreateUser,
   adminUpdateUser,
   adminDeleteUser,
+  adminGetUsageSummary,
+  adminGetUsageByModule,
+  adminGetUsageErrors,
 } from '../utils/api';
 import UserBadge from '../components/UserBadge';
 
@@ -29,6 +32,7 @@ export default function AdminPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editUser, setEditUser] = useState(null);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('users');
 
   async function loadData() {
     setLoading(true);
@@ -92,11 +96,33 @@ export default function AdminPage() {
       </header>
 
       <main className="mx-auto max-w-7xl px-6 py-8">
-        {loading ? (
+        {/* Tab bar */}
+        <div className="flex gap-1 mb-6 bg-gray-100 p-1 rounded-lg w-fit">
+          {[
+            { id: 'users', label: 'Users' },
+            { id: 'usage', label: 'Usage & Costs' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition ${
+                activeTab === tab.id
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === 'usage' && <UsageDashboard />}
+
+        {activeTab === 'users' && loading ? (
           <AdminSkeleton />
-        ) : error ? (
+        ) : activeTab === 'users' && error ? (
           <p className="text-red-600 text-sm">{error}</p>
-        ) : (
+        ) : activeTab === 'users' ? (
           <>
             {/* Stats cards */}
             {stats && (
@@ -275,6 +301,214 @@ export default function AdminPage() {
           onClose={() => setModalOpen(false)}
           onSaved={() => { setModalOpen(false); loadData(); }}
         />
+      )}
+    </div>
+  );
+}
+
+/* ── Usage Dashboard ───────────────────────────────────────────── */
+
+function UsageDashboard() {
+  const [days, setDays] = useState(7);
+  const [summary, setSummary] = useState(null);
+  const [breakdown, setBreakdown] = useState(null);
+  const [errors, setErrors] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [activeView, setActiveView] = useState('summary');
+
+  async function loadUsage() {
+    setLoading(true);
+    try {
+      const [s, b, e] = await Promise.all([
+        adminGetUsageSummary(days),
+        adminGetUsageByModule(days),
+        adminGetUsageErrors(days, 20),
+      ]);
+      setSummary(s);
+      setBreakdown(b);
+      setErrors(e);
+    } catch (err) {
+      console.error('Usage load error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { loadUsage(); }, [days]);
+
+  if (loading) return <AdminSkeleton />;
+
+  const totalCalls = summary?.services?.reduce((s, r) => s + r.total_calls, 0) || 0;
+  const totalCost = summary?.services?.reduce((s, r) => s + parseFloat(r.total_cost_usd || 0), 0) || 0;
+  const totalErrors = summary?.services?.reduce((s, r) => s + r.error_count, 0) || 0;
+  const avgDuration = totalCalls
+    ? Math.round(summary.services.reduce((s, r) => s + r.avg_duration_ms * r.total_calls, 0) / totalCalls)
+    : 0;
+
+  return (
+    <div className="space-y-6">
+      {/* Period selector */}
+      <div className="flex items-center gap-3">
+        <span className="text-sm text-gray-500">Period:</span>
+        {[1, 7, 30].map((d) => (
+          <button
+            key={d}
+            onClick={() => setDays(d)}
+            className={`px-3 py-1 text-xs font-medium rounded-full transition ${
+              days === d ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {d === 1 ? '24h' : `${d}d`}
+          </button>
+        ))}
+      </div>
+
+      {/* Top-level stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <StatCard label="Total API Calls" value={totalCalls.toLocaleString()} color="indigo"
+          icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>}
+        />
+        <StatCard label="Est. Cost (USD)" value={`$${totalCost.toFixed(4)}`} color="teal"
+          icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+        />
+        <StatCard label="Errors" value={totalErrors} color="amber"
+          icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>}
+        />
+        <StatCard label="Avg Duration" value={`${avgDuration}ms`} color="purple"
+          icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+        />
+      </div>
+
+      {/* View tabs */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
+        {[
+          { id: 'summary', label: 'By Service' },
+          { id: 'breakdown', label: 'By Operation' },
+          { id: 'errors', label: 'Errors' },
+        ].map((v) => (
+          <button
+            key={v.id}
+            onClick={() => setActiveView(v.id)}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition ${
+              activeView === v.id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
+
+      {/* By Service table */}
+      {activeView === 'summary' && summary?.services && (
+        <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3">Service</th>
+                <th className="px-4 py-3 text-right">Calls</th>
+                <th className="px-4 py-3 text-right">Success</th>
+                <th className="px-4 py-3 text-right">Errors</th>
+                <th className="px-4 py-3 text-right">Avg Duration</th>
+                <th className="px-4 py-3 text-right">Input Tokens</th>
+                <th className="px-4 py-3 text-right">Output Tokens</th>
+                <th className="px-4 py-3 text-right">Cost (USD)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {summary.services.map((s) => (
+                <tr key={s.service} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 font-medium text-gray-900">{s.service}</td>
+                  <td className="px-4 py-3 text-right">{s.total_calls}</td>
+                  <td className="px-4 py-3 text-right text-green-600">{s.success_count}</td>
+                  <td className="px-4 py-3 text-right text-red-600">{s.error_count || '-'}</td>
+                  <td className="px-4 py-3 text-right text-gray-500">{s.avg_duration_ms}ms</td>
+                  <td className="px-4 py-3 text-right text-gray-500">{(s.total_input_tokens || 0).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-right text-gray-500">{(s.total_output_tokens || 0).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-right font-mono text-xs">${parseFloat(s.total_cost_usd || 0).toFixed(4)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* By Operation table */}
+      {activeView === 'breakdown' && breakdown?.breakdown && (
+        <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3">Module</th>
+                <th className="px-4 py-3">Service</th>
+                <th className="px-4 py-3">Operation</th>
+                <th className="px-4 py-3 text-right">Calls</th>
+                <th className="px-4 py-3 text-right">Errors</th>
+                <th className="px-4 py-3 text-right">Avg Duration</th>
+                <th className="px-4 py-3 text-right">Cost (USD)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {breakdown.breakdown.map((b, i) => (
+                <tr key={i} className="hover:bg-gray-50">
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                      b.module === 'pipeline' ? 'bg-indigo-50 text-indigo-700' :
+                      b.module === 'breaking' ? 'bg-teal-50 text-teal-700' :
+                      b.module === 'pulse' ? 'bg-amber-50 text-amber-700' :
+                      'bg-gray-50 text-gray-700'
+                    }`}>
+                      {b.module}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-600">{b.service}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-gray-700">{b.operation}</td>
+                  <td className="px-4 py-3 text-right">{b.total_calls}</td>
+                  <td className="px-4 py-3 text-right text-red-600">{b.errors || '-'}</td>
+                  <td className="px-4 py-3 text-right text-gray-500">{b.avg_duration_ms}ms</td>
+                  <td className="px-4 py-3 text-right font-mono text-xs">${parseFloat(b.total_cost_usd || 0).toFixed(4)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Errors table */}
+      {activeView === 'errors' && errors && (
+        <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
+          {errors.total_errors === 0 ? (
+            <p className="px-4 py-8 text-center text-gray-400 text-sm">No errors in the last {days} day{days > 1 ? 's' : ''}</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3">Time</th>
+                  <th className="px-4 py-3">Module</th>
+                  <th className="px-4 py-3">Service</th>
+                  <th className="px-4 py-3">Operation</th>
+                  <th className="px-4 py-3">Error</th>
+                  <th className="px-4 py-3">Duration</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {errors.errors.map((e, i) => (
+                  <tr key={i} className="hover:bg-red-50/30">
+                    <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
+                      {new Date(e.timestamp).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-xs">{e.module}</td>
+                    <td className="px-4 py-3 text-xs">{e.service}</td>
+                    <td className="px-4 py-3 font-mono text-xs">{e.operation}</td>
+                    <td className="px-4 py-3 text-xs text-red-700 max-w-xs truncate" title={e.error_message}>
+                      {e.error_message}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-500">{e.duration_ms}ms</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       )}
     </div>
   );
