@@ -226,3 +226,33 @@ export async function getPulseSpecialties() {
   const res = await request(`${BASE}/pulse/specialties`);
   return res.json();
 }
+
+// ── Breaking (Pulse v2) ─────────────────────────────────────────
+
+export async function getBreakingHeadlines() {
+  const res = await request(`${BASE}/breaking/`);
+  return res.json();
+}
+
+export async function updateBreakingPreferences(specialties) {
+  const res = await request(`${BASE}/breaking/preferences`, {
+    method: 'POST',
+    body: JSON.stringify({ specialties }),
+  });
+  return res.json();
+}
+
+export async function triggerDeepResearch(headlineId) {
+  const res = await request(`${BASE}/breaking/${headlineId}/deep-research`, {
+    method: 'POST',
+  });
+  return res.json();
+}
+
+export async function registerPushToken(token, platform) {
+  const res = await request(`${BASE}/breaking/push-token`, {
+    method: 'POST',
+    body: JSON.stringify({ token, platform }),
+  });
+  return res.json();
+}

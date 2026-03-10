@@ -7,6 +7,7 @@ import SubmitPage from './pages/SubmitPage';
 import LandingPage from './pages/LandingPage';
 import ResearchPage from './pages/ResearchPage';
 import PulsePage from './pages/PulsePage';
+import BreakingPage from './pages/BreakingPage';
 import LoginPage from './pages/LoginPage';
 import AdminPage from './pages/AdminPage';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -52,6 +53,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <PulsePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/breaking"
+        element={
+          <ProtectedRoute>
+            <BreakingPage />
           </ProtectedRoute>
         }
       />

@@ -28,6 +28,18 @@ const CARDS = [
     accent: 'teal',
   },
   {
+    id: 'breaking',
+    title: 'Breaking',
+    description:
+      'Daily curated medical headlines with urgency tiers, OpenAlex verification, and one-tap deep research.',
+    icon: (
+      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z" />
+      </svg>
+    ),
+    accent: 'teal',
+  },
+  {
     id: 'pulse',
     title: 'Pulse',
     description:
@@ -69,6 +81,8 @@ export default function LandingPage() {
   function handleCardClick(card) {
     if (card.id === 'research') {
       navigate('/research');
+    } else if (card.id === 'breaking') {
+      navigate('/breaking');
     } else if (card.id === 'pulse') {
       navigate('/pulse');
     } else {
@@ -107,7 +121,7 @@ export default function LandingPage() {
 
       {/* Cards */}
       <section className="mx-auto max-w-5xl px-6 -mt-12 pb-20">
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {CARDS.map((card, i) => {
             const ac = accentClasses[card.accent];
             const isSecondOpinion = card.id === 'second-opinion';
@@ -145,7 +159,7 @@ export default function LandingPage() {
                     <div className={`mt-3 flex items-center text-sm font-medium ${
                       card.id === 'pulse' ? 'text-amber-500' : 'text-teal-500'
                     }`}>
-                      {card.id === 'pulse' ? 'Open Pulse' : 'Start researching'}
+                      {card.id === 'pulse' ? 'Open Pulse' : card.id === 'breaking' ? 'Open Breaking' : 'Start researching'}
                       <svg className="ml-1 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                       </svg>
