@@ -122,7 +122,7 @@ export default function AdminPage() {
           <AdminSkeleton />
         ) : activeTab === 'users' && error ? (
           <p className="text-red-600 text-sm">{error}</p>
-        ) : activeTab === 'users' ? (
+        ) : activeTab === 'users' && !loading && !error ? (
           <>
             {/* Stats cards */}
             {stats && (
@@ -291,7 +291,7 @@ export default function AdminPage() {
               </table>
             </div>
           </>
-        )}
+        ) : null}
       </main>
 
       {/* Create/Edit Modal */}
