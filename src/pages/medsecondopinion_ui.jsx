@@ -105,7 +105,7 @@ const SCENARIOS = [
   },
 ];
 
-const SPECIALTIES = ["All", "Cardiology", "General Medicine", "Neurology", "Hepatology", "Endocrinology", "Pulmonology", "Gastroenterology", "Oncology"];
+const SPECIALTIES = ["All", "Cardiology", "Dermatology", "Emergency Medicine", "Endocrinology", "Gastroenterology", "General Medicine", "Hematology", "Hepatology", "Infectious Disease", "Nephrology", "Neurology", "Oncology", "Ophthalmology", "Pediatrics", "Psychiatry", "Pulmonology", "Rheumatology"];
 
 const PIPELINE_STEPS = [
   { icon: "📋", label: "Case received", duration: 800 },

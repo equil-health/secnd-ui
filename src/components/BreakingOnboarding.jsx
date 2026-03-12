@@ -1,8 +1,10 @@
 import { useState } from 'react';
 
 const SPECIALTIES = [
-  'Cardiology', 'Neurology', 'Hepatology', 'Oncology', 'Pulmonology',
-  'Endocrinology', 'Gastroenterology', 'General Medicine', 'Nephrology', 'Rheumatology',
+  'Cardiology', 'Dermatology', 'Emergency Medicine', 'Endocrinology',
+  'Gastroenterology', 'General Medicine', 'Hematology', 'Hepatology',
+  'Infectious Disease', 'Nephrology', 'Neurology', 'Oncology',
+  'Ophthalmology', 'Pediatrics', 'Psychiatry', 'Pulmonology', 'Rheumatology',
 ];
 
 const MAX = 3;
