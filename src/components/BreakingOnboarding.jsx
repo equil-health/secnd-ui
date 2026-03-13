@@ -7,10 +7,10 @@ const SPECIALTIES = [
   'Ophthalmology', 'Pediatrics', 'Psychiatry', 'Pulmonology', 'Rheumatology',
 ];
 
-const MAX = 3;
+const MAX = 1;
 
 export default function BreakingOnboarding({ onSave, saving }) {
-  const [selected, setSelected] = useState([]);
+  const [selected, setSelected] = useState([SPECIALTIES[0]]);
 
   function toggle(sp) {
     setSelected((prev) => {
@@ -22,9 +22,9 @@ export default function BreakingOnboarding({ onSave, saving }) {
 
   return (
     <div className="bg-white rounded-2xl shadow-lg border border-teal-200 p-8 max-w-lg mx-auto">
-      <h2 className="text-xl font-bold text-gray-900">Choose your specialties</h2>
+      <h2 className="text-xl font-bold text-gray-900">Choose your specialty</h2>
       <p className="text-sm text-gray-500 mt-1 mb-6">
-        Select 1&ndash;3 specialties to personalize your daily Breaking feed.
+        Select a specialty to personalize your daily Breaking feed.
       </p>
 
       <div className="flex flex-wrap gap-2">
@@ -50,10 +50,6 @@ export default function BreakingOnboarding({ onSave, saving }) {
           );
         })}
       </div>
-
-      <p className="text-center text-xs text-gray-400 mt-4">
-        {selected.length} / {MAX} selected
-      </p>
 
       <button
         onClick={() => onSave(selected)}

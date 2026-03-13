@@ -88,7 +88,8 @@ export default function BreakingPage() {
   }
 
   const specialties = Object.keys(headlines);
-  const currentHeadlines = headlines[activeSpecialty] || [];
+  const displaySpecialty = activeSpecialty || specialties[0] || selectedSpecialties[0] || null;
+  const currentHeadlines = headlines[displaySpecialty] || [];
 
   // Sort: ALERT > MAJOR > NEW
   const TIER_ORDER = { ALERT: 0, MAJOR: 1, NEW: 2 };
@@ -177,7 +178,7 @@ export default function BreakingPage() {
             {specialties.length > 0 && (
               <SpecialtyTabs
                 specialties={specialties}
-                active={activeSpecialty}
+                active={displaySpecialty}
                 onSelect={setActiveSpecialty}
                 alertSpecialties={alertSpecialties}
               />
@@ -186,7 +187,7 @@ export default function BreakingPage() {
             {/* Settings links */}
             <div className="flex items-center justify-between">
               <p className="text-xs text-gray-400">
-                {sorted.length} headline{sorted.length !== 1 ? 's' : ''} for {activeSpecialty}
+                {sorted.length} headline{sorted.length !== 1 ? 's' : ''} for {displaySpecialty}
               </p>
               <div className="flex gap-3">
                 <button
@@ -221,7 +222,7 @@ export default function BreakingPage() {
             ) : (
               <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
                 <p className="text-gray-500 text-sm">
-                  No headlines for <strong>{activeSpecialty}</strong> today.
+                  No headlines for <strong>{displaySpecialty}</strong> today.
                 </p>
                 <p className="text-gray-400 text-xs mt-1">
                   Headlines are refreshed daily at 05:00 IST.
