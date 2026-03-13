@@ -10,7 +10,7 @@ const SPECIALTIES = [
 const MAX = 1;
 
 export default function BreakingOnboarding({ onSave, saving }) {
-  const [selected, setSelected] = useState([SPECIALTIES[0]]);
+  const [selected, setSelected] = useState([]);
 
   function toggle(sp) {
     setSelected((prev) => {
