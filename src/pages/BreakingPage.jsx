@@ -183,17 +183,28 @@ export default function BreakingPage() {
               />
             )}
 
-            {/* Settings link */}
+            {/* Settings links */}
             <div className="flex items-center justify-between">
               <p className="text-xs text-gray-400">
                 {sorted.length} headline{sorted.length !== 1 ? 's' : ''} for {activeSpecialty}
               </p>
-              <button
-                onClick={() => setOnboarding(true)}
-                className="text-xs text-teal-600 hover:text-teal-800 font-medium"
-              >
-                Change specialties
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setSelectedSpecialties(specialties);
+                    setTopicOnboarding(true);
+                  }}
+                  className="text-xs text-teal-600 hover:text-teal-800 font-medium"
+                >
+                  Manage topics
+                </button>
+                <button
+                  onClick={() => setOnboarding(true)}
+                  className="text-xs text-gray-400 hover:text-gray-600 font-medium"
+                >
+                  Change specialties
+                </button>
+              </div>
             </div>
 
             {/* Headlines */}
