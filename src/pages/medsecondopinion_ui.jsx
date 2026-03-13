@@ -105,7 +105,7 @@ const SCENARIOS = [
   },
 ];
 
-const SPECIALTIES = ["All", "Cardiology", "Dermatology", "Emergency Medicine", "Endocrinology", "Gastroenterology", "General Medicine", "Hematology", "Hepatology", "Infectious Disease", "Nephrology", "Neurology", "Oncology", "Ophthalmology", "Pediatrics", "Psychiatry", "Pulmonology", "Rheumatology"];
+const SPECIALTIES = ["All", "Cardiology", "Dermatology", "Emergency Medicine", "Endocrinology", "Gastroenterology", "General Medicine", "Gynaecology", "Hematology", "Hepatology", "Infectious Disease", "Nephrology", "Neurology", "Oncology", "Ophthalmology", "Orthopaedics", "Pediatrics", "Psychiatry", "Pulmonology", "Rheumatology"];
 
 const PIPELINE_STEPS = [
   { icon: "📋", label: "Case received", duration: 800 },
