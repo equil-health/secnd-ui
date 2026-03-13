@@ -3,6 +3,8 @@ import {
   getBreakingHeadlines,
   updateBreakingPreferences,
   triggerDeepResearch,
+  saveBreakingTopics,
+  getBreakingTopics,
 } from '../utils/api';
 
 const useBreakingStore = create((set, get) => ({
@@ -58,6 +60,37 @@ const useBreakingStore = create((set, get) => ({
       return result;
     } catch (err) {
       set({ generating: false, error: err.message });
+      throw err;
+    }
+  },
+
+  // v7.0: Doctor topics
+  specialtyTopics: {},
+  topicsLoading: false,
+
+  fetchTopics: async () => {
+    set({ topicsLoading: true });
+    try {
+      const data = await getBreakingTopics();
+      set({ specialtyTopics: data || {}, topicsLoading: false });
+      return data;
+    } catch (err) {
+      set({ topicsLoading: false, error: err.message });
+      throw err;
+    }
+  },
+
+  saveTopics: async (specialtyTopics) => {
+    set({ topicsLoading: true, error: null });
+    try {
+      const result = await saveBreakingTopics(specialtyTopics);
+      set({
+        specialtyTopics: result.specialty_topics || {},
+        topicsLoading: false,
+      });
+      return result;
+    } catch (err) {
+      set({ topicsLoading: false, error: err.message });
       throw err;
     }
   },

@@ -283,3 +283,17 @@ export async function registerPushToken(token, platform) {
   });
   return res.json();
 }
+
+// v7.0: Doctor topic personalisation
+export async function saveBreakingTopics(specialtyTopics) {
+  const res = await request(`${BASE}/breaking/topics`, {
+    method: 'POST',
+    body: JSON.stringify({ specialty_topics: specialtyTopics }),
+  });
+  return res.json();
+}
+
+export async function getBreakingTopics() {
+  const res = await request(`${BASE}/breaking/topics`);
+  return res.json();
+}

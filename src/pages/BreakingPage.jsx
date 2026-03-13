@@ -7,6 +7,7 @@ import HeadlineCard from '../components/HeadlineCard';
 import SpecialtyTabs from '../components/SpecialtyTabs';
 import TrialBanner from '../components/TrialBanner';
 import BreakingOnboarding from '../components/BreakingOnboarding';
+import TopicOnboarding from '../components/TopicOnboarding';
 
 export default function BreakingPage() {
   const navigate = useNavigate();
@@ -14,10 +15,13 @@ export default function BreakingPage() {
   const {
     headlines, alertCount, trialStatus, loading, error, activeSpecialty,
     fetchHeadlines, setActiveSpecialty, setSpecialties, deepResearch,
+    saveTopics,
   } = useBreakingStore();
 
   const [initialized, setInitialized] = useState(false);
   const [onboarding, setOnboarding] = useState(false);
+  const [topicOnboarding, setTopicOnboarding] = useState(false);
+  const [selectedSpecialties, setSelectedSpecialties] = useState([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -38,10 +42,32 @@ export default function BreakingPage() {
     setSaving(true);
     try {
       await setSpecialties(specialties);
+      setSelectedSpecialties(specialties);
       setOnboarding(false);
-      addToast('Specialties saved! Loading your Breaking feed.', 'success');
+      // Show topic onboarding after specialty selection
+      setTopicOnboarding(true);
     } catch (err) {
       addToast(err.message || 'Failed to save preferences', 'error');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleTopicSave(topics) {
+    setSaving(true);
+    try {
+      // If user skipped (empty topics), just close
+      const hasTopics = Object.values(topics).some((arr) => arr.length > 0);
+      if (hasTopics) {
+        await saveTopics(topics);
+        addToast('Topics saved! Your feed will reflect these at 05:00 IST.', 'success');
+      } else {
+        addToast('Specialties saved! Loading your Breaking feed.', 'success');
+      }
+      setTopicOnboarding(false);
+      await fetchHeadlines();
+    } catch (err) {
+      addToast(err.message || 'Failed to save topics', 'error');
     } finally {
       setSaving(false);
     }
@@ -130,13 +156,22 @@ export default function BreakingPage() {
           </div>
         )}
 
-        {/* Onboarding */}
+        {/* Onboarding — specialty selection */}
         {initialized && onboarding && (
           <BreakingOnboarding onSave={handleOnboardingSave} saving={saving} />
         )}
 
+        {/* Onboarding — topic personalisation (v7.0) */}
+        {initialized && topicOnboarding && !onboarding && (
+          <TopicOnboarding
+            specialties={selectedSpecialties}
+            onSave={handleTopicSave}
+            saving={saving}
+          />
+        )}
+
         {/* Main feed */}
-        {initialized && !onboarding && (
+        {initialized && !onboarding && !topicOnboarding && (
           <div className="space-y-4">
             {/* Specialty tabs */}
             {specialties.length > 0 && (
