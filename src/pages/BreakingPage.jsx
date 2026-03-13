@@ -88,8 +88,15 @@ export default function BreakingPage() {
   }
 
   const specialties = Object.keys(headlines);
-  const displaySpecialty = activeSpecialty || specialties[0] || selectedSpecialties[0] || null;
+  // If activeSpecialty is stale (not in current specialties list), reset to first available
+  const validActive = activeSpecialty && specialties.includes(activeSpecialty) ? activeSpecialty : null;
+  const displaySpecialty = validActive || specialties[0] || selectedSpecialties[0] || null;
   const currentHeadlines = headlines[displaySpecialty] || [];
+
+  // Sync store if activeSpecialty was stale
+  if (displaySpecialty && displaySpecialty !== activeSpecialty) {
+    setActiveSpecialty(displaySpecialty);
+  }
 
   // Sort: ALERT > MAJOR > NEW
   const TIER_ORDER = { ALERT: 0, MAJOR: 1, NEW: 2 };
