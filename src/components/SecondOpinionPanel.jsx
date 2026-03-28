@@ -7,8 +7,12 @@ const CONFIDENCE_COLORS = {
   low: 'bg-red-100 text-red-800',
 };
 
-function isVerified(answer) {
-  return String(answer).toLowerCase() === 'true';
+function getVerdict(answer) {
+  if (answer == null) return 'unknown';
+  const val = String(answer).toLowerCase().trim();
+  if (val === 'true' || val === 'yes' || val === 'verified' || val === 'confirmed') return 'verified';
+  if (val === 'false' || val === 'no' || val === 'refuted' || val === 'not verified') return 'refuted';
+  return 'unknown';
 }
 
 function hasCaution(text) {
@@ -175,7 +179,10 @@ export default function SecondOpinionPanel({ loading, result, error }) {
                 <p className="text-xs text-indigo-600 font-medium mb-2">Intent: {result.query_intent}</p>
               )}
               <div className="prose prose-sm max-w-none">
-                <FormattedMarkdown content={result.clinical_answer} />
+                {result.clinical_answer
+                  ? <FormattedMarkdown content={result.clinical_answer} />
+                  : <p className="text-sm text-gray-400">No clinical answer returned.</p>
+                }
               </div>
               {result.total_latency_ms > 0 && (
                 <p className="text-[10px] text-gray-400 mt-3">
@@ -197,32 +204,37 @@ export default function SecondOpinionPanel({ loading, result, error }) {
                 </h4>
                 <div className="space-y-2">
                   {result.triplets_verified.map((t, i) => {
-                    const verified = isVerified(t.answer);
+                    const verdict = getVerdict(t.answer);
+                    const borderColor = verdict === 'verified' ? 'bg-green-50/50 border-green-200'
+                      : verdict === 'refuted' ? 'bg-red-50/30 border-red-200'
+                      : 'bg-gray-50 border-gray-200';
                     return (
-                      <div key={i} className={`flex flex-col gap-1.5 p-3 rounded-lg border ${
-                        verified ? 'bg-green-50/50 border-green-200' : 'bg-gray-50 border-gray-200'
-                      }`}>
+                      <div key={i} className={`flex flex-col gap-1.5 p-3 rounded-lg border ${borderColor}`}>
                         <div className="flex items-center gap-2 flex-wrap">
                           {/* Verdict icon */}
-                          {verified ? (
+                          {verdict === 'verified' ? (
                             <span className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
                               <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                               </svg>
                             </span>
-                          ) : (
-                            <span className="w-5 h-5 rounded-full bg-gray-400 flex items-center justify-center flex-shrink-0">
+                          ) : verdict === 'refuted' ? (
+                            <span className="w-5 h-5 rounded-full bg-red-400 flex items-center justify-center flex-shrink-0">
                               <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                               </svg>
                             </span>
+                          ) : (
+                            <span className="w-5 h-5 rounded-full bg-amber-400 flex items-center justify-center flex-shrink-0">
+                              <span className="text-white text-[10px] font-bold">?</span>
+                            </span>
                           )}
                           <span className="px-2 py-0.5 bg-indigo-100 text-indigo-800 text-xs font-medium rounded">
-                            {t.head}
+                            {t.head || '—'}
                           </span>
-                          <span className="text-xs text-gray-400 font-mono">{t.relation}</span>
+                          <span className="text-xs text-gray-400 font-mono">{t.relation || '→'}</span>
                           <span className="px-2 py-0.5 bg-indigo-100 text-indigo-800 text-xs font-medium rounded">
-                            {t.tail}
+                            {t.tail || '—'}
                           </span>
                           {t.confidence && (
                             <span className={`px-1.5 py-0.5 text-[10px] font-semibold rounded ${CONFIDENCE_COLORS[t.confidence] || 'bg-gray-100 text-gray-600'}`}>
