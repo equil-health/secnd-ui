@@ -297,3 +297,19 @@ export async function getBreakingTopics() {
   const res = await request(`${BASE}/breaking/topics`);
   return res.json();
 }
+
+// ── MedGemma Second Opinion ─────────────────────────────────────
+const MEDGEMMA_BASE = 'https://doubtlessly-unprejudicial-marilyn.ngrok-free.dev';
+
+export async function queryMedGemma(query, indiaContext = false) {
+  const res = await fetch(`${MEDGEMMA_BASE}/query`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, india_context: indiaContext }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || res.statusText);
+  }
+  return res.json();
+}

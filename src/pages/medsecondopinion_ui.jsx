@@ -109,15 +109,15 @@ const SPECIALTIES = ["All", "Cardiology", "Dermatology", "Emergency Medicine", "
 
 const PIPELINE_STEPS = [
   { icon: "📋", label: "Case received", duration: 800 },
-  { icon: "🧬", label: "MedGemma analyzing", duration: 3000 },
+  { icon: "🧬", label: "Analyzing case", duration: 3000 },
   { icon: "🧹", label: "Cleaning output", duration: 600 },
   { icon: "🔍", label: "Checking for hallucinations", duration: 1500 },
   { icon: "📑", label: "Extracting claims", duration: 1200 },
   { icon: "🔎", label: "Searching medical literature", duration: 2500 },
-  { icon: "🏛️", label: "Verifying citations (OpenAlex)", duration: 2000 },
+  { icon: "🏛️", label: "Verifying citations", duration: 2000 },
   { icon: "⚖️", label: "Verifying against evidence", duration: 2000 },
-  { icon: "🌩️", label: "STORM deep research", duration: 4000 },
-  { icon: "🏛️", label: "Verifying STORM citations", duration: 1500 },
+  { icon: "🌩️", label: "Deep research", duration: 4000 },
+  { icon: "🏛️", label: "Verifying research citations", duration: 1500 },
   { icon: "📝", label: "Compiling report", duration: 1000 },
   { icon: "✅", label: "Report ready", duration: 500 },
 ];
@@ -175,33 +175,33 @@ function getFileType(name) {
 const RESEARCH_PIPELINE_STEPS = [
   { icon: "📋", label: "Topic accepted", duration: 500 },
   { icon: "💡", label: "Generating research questions", duration: 2000 },
-  { icon: "🌩️", label: "STORM deep research", duration: 4000 },
+  { icon: "🌩️", label: "Deep research", duration: 4000 },
   { icon: "📝", label: "Compiling report", duration: 1000 },
   { icon: "✅", label: "Report ready", duration: 500 },
 ];
 
 // Map backend step numbers (1-11) to PIPELINE_STEPS indices (0-11)
-// Backend: 1=accepted, 2=medgemma, 3=cleaning, 4=validating, 5=extracting,
-// 6=searching, 7=verify_citations, 8=synthesize, 9=STORM, 10=verify_storm, 11=compile
+// Backend: 1=accepted, 2=analysis, 3=cleaning, 4=validating, 5=extracting,
+// 6=searching, 7=verify_citations, 8=synthesize, 9=deep_research, 10=verify_research, 11=compile
 // UI index 0=received maps to backend step 1, index 11=ready has no backend step (auto-set on complete)
 const BACKEND_STEP_TO_UI = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6, 8: 7, 9: 8, 10: 9, 11: 10 };
 
-// Research pipeline: backend step 1=accepted(0), 2=questions(1), 3=STORM(2), 4=compile(3)
+// Research pipeline: backend step 1=accepted(0), 2=questions(1), 3=deep_research(2), 4=compile(3)
 const RESEARCH_STEP_TO_UI = { 1: 0, 2: 1, 3: 2, 4: 3 };
 
 const AUDIO_PIPELINE_STEPS = [
   { icon: "\uD83C\uDFA4", label: "Audio received", duration: 300 },
   { icon: "\uD83D\uDDE3\uFE0F", label: "MedASR transcribing", duration: 4000 },
   { icon: "\uD83D\uDCCB", label: "Structuring transcript", duration: 3000 },
-  { icon: "\uD83E\uDDEC", label: "MedGemma analyzing", duration: 3000 },
+  { icon: "\uD83E\uDDEC", label: "Analyzing case", duration: 3000 },
   { icon: "\uD83E\uDDF9", label: "Cleaning output", duration: 600 },
   { icon: "\uD83D\uDD0D", label: "Checking for hallucinations", duration: 1500 },
   { icon: "\uD83D\uDCD1", label: "Extracting claims", duration: 1200 },
   { icon: "\uD83D\uDD0E", label: "Searching medical literature", duration: 2500 },
-  { icon: "\uD83C\uDFDB\uFE0F", label: "Verifying citations (OpenAlex)", duration: 2000 },
+  { icon: "\uD83C\uDFDB\uFE0F", label: "Verifying citations", duration: 2000 },
   { icon: "\u2696\uFE0F", label: "Verifying against evidence", duration: 2000 },
-  { icon: "\uD83C\uDF29\uFE0F", label: "STORM deep research", duration: 4000 },
-  { icon: "\uD83C\uDFDB\uFE0F", label: "Verifying STORM citations", duration: 1500 },
+  { icon: "\uD83C\uDF29\uFE0F", label: "Deep research", duration: 4000 },
+  { icon: "\uD83C\uDFDB\uFE0F", label: "Verifying research citations", duration: 1500 },
   { icon: "\uD83D\uDCDD", label: "Compiling report", duration: 1000 },
   { icon: "\u2705", label: "Report ready", duration: 500 },
 ];
@@ -1410,7 +1410,7 @@ export default function DemoPage() {
           </div>
           <div style={{ fontSize: 15, color: "#64748b", marginTop: 10, maxWidth: 520, margin: "10px auto 0", lineHeight: 1.6 }}>
             {line === "research"
-              ? "Enter any medical or scientific research topic. STORM will conduct deep multi-perspective research and produce a cited report."
+              ? "Enter any medical or scientific research topic. The Reporter Engine will conduct deep multi-perspective research and produce a cited report."
               : mode === "demo"
                 ? "Each scenario loads realistic clinical data. Pick a case and get an AI-powered second opinion backed by medical literature."
                 : "Drop lab reports, imaging, discharge summaries, or any clinical documents. We'll extract the data, strip identifiers, and analyze."}
@@ -1495,8 +1495,8 @@ export default function DemoPage() {
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {[
-                  { icon: "💡", title: "Topic Analysis", desc: "Gemini Flash analyzes your topic and generates focused research questions" },
-                  { icon: "🌩️", title: "STORM Research", desc: "Stanford's STORM framework conducts deep multi-perspective literature research" },
+                  { icon: "💡", title: "Topic Analysis", desc: "Analyzes your topic and generates focused research questions" },
+                  { icon: "🌩️", title: "Deep Research", desc: "Conducts deep multi-perspective literature research with citations" },
                   { icon: "📋", title: "Report", desc: "Receive a cited research report with executive summary and full bibliography" },
                 ].map((step, i) => (
                   <div key={i} style={{
@@ -1812,7 +1812,7 @@ export default function DemoPage() {
                 {[
                   { icon: "📄", title: "Upload", desc: "Drop any clinical document — PDFs, scans, lab CSVs, DICOM imaging" },
                   { icon: "🛡️", title: "De-identify", desc: "Names, DOB, MRN, and all PHI are stripped automatically before analysis" },
-                  { icon: "🧬", title: "Analyze", desc: "MedGemma reads the case. Gemini verifies claims against 40+ real sources" },
+                  { icon: "🧬", title: "Analyze", desc: "Reads the case and verifies claims against 40+ real sources" },
                   { icon: "📋", title: "Report", desc: "Receive a cited second opinion in 2-3 minutes with evidence verdicts" },
                 ].map((step, i) => (
                   <div key={i} style={{

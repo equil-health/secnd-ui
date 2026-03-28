@@ -12,13 +12,13 @@ export default function HeadlineCard({ headline, onDeepResearch }) {
 
   return (
     <div className={`border border-gray-200 border-l-4 ${tierClass} rounded-lg p-4 transition hover:shadow-md`}>
-      {/* Top row: badge + OpenAlex */}
+      {/* Top row: badge + verification */}
       <div className="flex items-center gap-2 flex-wrap">
         <UrgencyBadge tier={tier} reason={headline.urgency_reason} />
 
         {headline.is_verified && (
           <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 font-medium">
-            {'\u2705'} OpenAlex verified
+            {'\u2705'} Verified
             {headline.citation_count != null && (
               <span className="text-gray-400">
                 {'\u00B7'} {headline.citation_count.toLocaleString()} citations

@@ -276,18 +276,18 @@ function MethodologySection({ report, useV2 }) {
           <p className="font-medium text-gray-900">10-Step Evidence-Backed Research Pipeline</p>
           <ol className="list-decimal list-inside space-y-2">
             <li><strong>Topic Accepted</strong> — Research topic received and queued.</li>
-            <li><strong>Research Questions</strong> — Gemini 2.0 Flash generated focused research questions.</li>
-            <li><strong>Co-STORM Deep Research</strong> — Multi-perspective literature review with citations.</li>
+            <li><strong>Research Questions</strong> — Generated focused research questions.</li>
+            <li><strong>Deep Research</strong> — Multi-perspective literature review with citations.</li>
             <li><strong>Hallucination Guard</strong> — Validated article for fabricated citations and errors.</li>
             <li><strong>Claim Extraction</strong> — Extracted verifiable claims from the literature review.</li>
             <li><strong>Evidence Search</strong> — Searched each claim against current scientific literature.</li>
-            <li><strong>Citation Verification</strong> — Verified references via OpenAlex for authenticity.</li>
+            <li><strong>Citation Verification</strong> — Verified references for authenticity.</li>
             <li><strong>Evidence Synthesis</strong> — Synthesized evidence and assigned verdicts per claim.</li>
             <li><strong>Executive Summary</strong> — Generated specialty-aware executive summary.</li>
             <li><strong>Report Compilation</strong> — Assembled unified report with enriched bibliography.</li>
           </ol>
           <p className="text-xs text-gray-500 mt-4">
-            Powered by Co-STORM / STORM + Gemini 2.0 Flash + Serper.dev + OpenAlex
+            Powered by SECND Reporter Engine
           </p>
         </div>
       </SectionCard>
@@ -300,12 +300,12 @@ function MethodologySection({ report, useV2 }) {
         <p className="font-medium text-gray-900">4-Step Research Pipeline</p>
         <ol className="list-decimal list-inside space-y-2">
           <li><strong>Topic Accepted</strong> — Research topic received and queued.</li>
-          <li><strong>Topic Analysis</strong> — Gemini 2.0 Flash analyzed the topic and generated research questions.</li>
-          <li><strong>Deep Research</strong> — STORM framework conducted multi-perspective literature research.</li>
+          <li><strong>Topic Analysis</strong> — Analyzed the topic and generated research questions.</li>
+          <li><strong>Deep Research</strong> — Conducted multi-perspective literature research.</li>
           <li><strong>Report Compilation</strong> — Assembled findings with executive summary and bibliography.</li>
         </ol>
         <p className="text-xs text-gray-500 mt-4">
-          Powered by STORM + Gemini 2.0 Flash
+          Powered by SECND Reporter Engine
         </p>
       </div>
     </SectionCard>

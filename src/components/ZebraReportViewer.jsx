@@ -252,7 +252,7 @@ function EvidenceSection({ report }) {
 function LiteratureSection({ report }) {
   return (
     <SectionCard
-      title="STORM Literature Review"
+      title="Literature Review"
       subtitle="Deep research on the rare disease differential"
       accent="teal"
       icon="📚"

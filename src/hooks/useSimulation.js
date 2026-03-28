@@ -8,15 +8,15 @@ import { getReport, getCase } from '../utils/api';
  */
 const SIM_STEPS = [
   { step: 0, label: 'Case accepted', duration: 400 },
-  { step: 1, label: 'MedGemma analyzing case...', duration: 3500, preview: 'Generating clinical analysis...' },
+  { step: 1, label: 'Analyzing case...', duration: 3500, preview: 'Generating clinical analysis...' },
   { step: 2, label: 'Cleaning output...', duration: 1200, preview: 'Removing duplication' },
   { step: 3, label: 'Validating claims...', duration: 2000, preview: 'Checking for hallucinations' },
   { step: 4, label: 'Extracting key claims...', duration: 1800, preview: 'Identifying verifiable claims' },
   { step: 5, label: 'Searching evidence...', duration: 2500, preview: 'Querying medical databases' },
-  { step: 6, label: 'Verifying citations (OpenAlex)...', duration: 2200, preview: 'Cross-referencing 250M+ works' },
+  { step: 6, label: 'Verifying citations...', duration: 2200, preview: 'Cross-referencing scientific literature' },
   { step: 7, label: 'Verifying claims against evidence...', duration: 2000, preview: 'Synthesizing evidence' },
-  { step: 8, label: 'STORM deep research...', duration: 3000, preview: 'Literature review in progress' },
-  { step: 9, label: 'Verifying STORM citations...', duration: 1500, preview: 'Validating research references' },
+  { step: 8, label: 'Deep research...', duration: 3000, preview: 'Literature review in progress' },
+  { step: 9, label: 'Verifying research citations...', duration: 1500, preview: 'Validating research references' },
   { step: 10, label: 'Building report...', duration: 1500, preview: 'Compiling final report' },
 ];
 

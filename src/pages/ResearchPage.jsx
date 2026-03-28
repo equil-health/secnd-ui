@@ -11,14 +11,14 @@ import { getMe } from '../utils/api';
 const STEPS_V1 = [
   { label: 'Topic accepted' },
   { label: 'Research questions' },
-  { label: 'STORM research' },
+  { label: 'Deep research' },
   { label: 'Compiling report' },
 ];
 
 const STEPS_V2 = [
   { label: 'Topic accepted' },
   { label: 'Research questions' },
-  { label: 'Co-STORM research' },
+  { label: 'Deep research' },
   { label: 'Hallucination check' },
   { label: 'Extracting claims' },
   { label: 'Searching evidence' },

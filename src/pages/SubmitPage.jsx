@@ -1,9 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { submitCaseWithFiles } from '../utils/api';
+import { submitCaseWithFiles, queryMedGemma } from '../utils/api';
 import useAppStore from '../stores/appStore';
 import usePipeline from '../hooks/usePipeline';
 import PipelineTracker from '../components/PipelineTracker';
+import SecondOpinionPanel from '../components/SecondOpinionPanel';
 import UserBadge from '../components/UserBadge';
 import useAuthStore from '../stores/authStore';
 import useToastStore from '../stores/toastStore';
@@ -34,12 +35,15 @@ export default function SubmitPage() {
   const navigate = useNavigate();
   const [caseText, setCaseText] = useState('');
   const [files, setFiles] = useState([]);
-  const [mode, setMode] = useState('standard');
+  const [mode, setMode] = useState('medgemma');
   const [dragOver, setDragOver] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [submitted, setSubmitted] = useState(false);
   const [caseId, setCaseId] = useState(null);
+  const [medgemmaResult, setMedgemmaResult] = useState(null);
+  const [medgemmaLoading, setMedgemmaLoading] = useState(false);
+  const [indiaContext, setIndiaContext] = useState(false);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -133,6 +137,29 @@ export default function SubmitPage() {
       setError(err.message || 'Submission failed. Please try again.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleMedGemmaSubmit = async () => {
+    if (!caseText.trim()) {
+      setError('Please describe the case before submitting.');
+      return;
+    }
+    setError(null);
+    setMedgemmaLoading(true);
+    setMedgemmaResult(null);
+    setSubmitted(true);
+
+    try {
+      const query = caseText.trim() + '\n\nI need a second opinion on this case.';
+      const data = await queryMedGemma(query, indiaContext);
+      setMedgemmaResult(data);
+      addToast('Analysis complete', 'success');
+    } catch (err) {
+      setError(err.message || 'Query failed. Please try again.');
+      setSubmitted(false);
+    } finally {
+      setMedgemmaLoading(false);
     }
   };
 
@@ -252,14 +279,14 @@ export default function SubmitPage() {
                 <div className="flex gap-3">
                   <button
                     type="button"
-                    onClick={() => setMode('standard')}
+                    onClick={() => setMode('medgemma')}
                     className={`flex-1 px-4 py-3 rounded-xl border-2 text-left transition-all ${
-                      mode === 'standard'
+                      mode === 'medgemma'
                         ? 'border-indigo-500 bg-indigo-50'
                         : 'border-gray-200 bg-white hover:border-gray-300'
                     }`}
                   >
-                    <p className={`text-sm font-semibold ${mode === 'standard' ? 'text-indigo-700' : 'text-gray-700'}`}>
+                    <p className={`text-sm font-semibold ${mode === 'medgemma' ? 'text-indigo-700' : 'text-gray-700'}`}>
                       Standard
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5">
@@ -285,6 +312,21 @@ export default function SubmitPage() {
                 </div>
               </div>
 
+              {/* India context toggle */}
+              {mode === 'medgemma' && (
+                <div className="mt-3">
+                  <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={indiaContext}
+                      onChange={(e) => setIndiaContext(e.target.checked)}
+                      className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    />
+                    India clinical context
+                  </label>
+                </div>
+              )}
+
               {/* Text area */}
               <textarea
                 ref={textareaRef}
@@ -303,23 +345,73 @@ export default function SubmitPage() {
 
               {/* Submit */}
               <button
-                onClick={handleSubmit}
-                disabled={submitting || !caseText.trim() || atLimit}
+                onClick={mode === 'medgemma' ? handleMedGemmaSubmit : handleSubmit}
+                disabled={submitting || medgemmaLoading || !caseText.trim() || atLimit}
                 className={`mt-4 w-full py-3 text-sm font-medium text-white rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${
                   mode === 'zebra'
                     ? 'bg-amber-600 hover:bg-amber-700'
                     : 'bg-indigo-600 hover:bg-indigo-700'
                 }`}
               >
-                {submitting
+                {submitting || medgemmaLoading
                   ? 'Submitting...'
                   : mode === 'zebra'
                     ? '🦓 Submit — Think Zebra'
                     : 'Submit Case'}
               </button>
             </>
-          ) : (
+          ) : mode === 'medgemma' ? (
             /* Post-submission view */
+            <div className="space-y-6">
+              <div className="bg-white rounded-xl border p-5">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-semibold text-gray-700">Clinical Query</h3>
+                  <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-medium rounded-full">Second Opinion</span>
+                </div>
+                <p className="text-sm text-gray-600 whitespace-pre-wrap line-clamp-4">
+                  {caseText}
+                </p>
+              </div>
+
+              <SecondOpinionPanel
+                loading={medgemmaLoading}
+                result={medgemmaResult}
+                error={error}
+              />
+
+              {/* New query button */}
+              {medgemmaResult && (
+                <div className="text-center">
+                  <button
+                    onClick={() => {
+                      setSubmitted(false);
+                      setMedgemmaResult(null);
+                      setError(null);
+                    }}
+                    className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                  >
+                    Submit another query
+                  </button>
+                </div>
+              )}
+
+              {error && !medgemmaLoading && (
+                <div className="text-center">
+                  <button
+                    onClick={() => {
+                      setSubmitted(false);
+                      setMedgemmaResult(null);
+                      setError(null);
+                    }}
+                    className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                  >
+                    Try again
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Standard/Zebra post-submission view */
             <div className="space-y-6">
               <div className="bg-white rounded-xl border p-5">
                 <h3 className="text-sm font-semibold text-gray-700 mb-2">Case Submitted</h3>
@@ -369,8 +461,8 @@ export default function SubmitPage() {
           )}
         </div>
 
-        {/* Sidebar pipeline tracker (visible during processing) */}
-        {submitted && pipelineStatus !== 'complete' && pipelineStatus !== 'error' && (
+        {/* Sidebar pipeline tracker (visible during processing, not for MedGemma) */}
+        {submitted && mode !== 'medgemma' && pipelineStatus !== 'complete' && pipelineStatus !== 'error' && (
           <aside className="hidden lg:block w-80 border-l bg-white p-4 overflow-y-auto">
             <PipelineTracker />
           </aside>
