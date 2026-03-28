@@ -7,6 +7,16 @@ const CONFIDENCE_COLORS = {
   low: 'bg-red-100 text-red-800',
 };
 
+function isVerified(answer) {
+  return String(answer).toLowerCase() === 'true';
+}
+
+function hasCaution(text) {
+  if (!text) return false;
+  const lower = text.toLowerCase();
+  return lower.includes('caution') || lower.includes('critical safety') || lower.includes('urgent');
+}
+
 const PIPELINE_STEPS = [
   { label: 'Parsing clinical query', duration: 3 },
   { label: 'Decomposing into biomedical triplets', duration: 8 },
@@ -144,25 +154,35 @@ export default function SecondOpinionPanel({ loading, result, error }) {
       {result && (
         <div className="space-y-4">
           {/* Clinical Answer */}
-          <div className="bg-white border rounded-xl border-l-4 border-l-purple-400 shadow-sm">
+          <div className={`bg-white border rounded-xl border-l-4 shadow-sm ${
+            result.has_critical_safety_flag || hasCaution(result.clinical_answer)
+              ? 'border-l-red-400'
+              : 'border-l-indigo-400'
+          }`}>
             <div className="px-5 py-4">
               <div className="flex items-center justify-between mb-2">
                 <h4 className="text-sm font-bold text-gray-800">Clinical Answer</h4>
-                {result.has_critical_safety_flag && (
-                  <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-semibold rounded-full">
-                    Safety Flag
+                {(result.has_critical_safety_flag || hasCaution(result.clinical_answer)) && (
+                  <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-semibold rounded-full flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                    </svg>
+                    Clinical Alert
                   </span>
                 )}
               </div>
               {result.query_intent && (
-                <p className="text-xs text-purple-600 font-medium mb-2">Intent: {result.query_intent}</p>
+                <p className="text-xs text-indigo-600 font-medium mb-2">Intent: {result.query_intent}</p>
               )}
               <div className="prose prose-sm max-w-none">
                 <FormattedMarkdown content={result.clinical_answer} />
               </div>
-              {result.total_latency_ms && (
+              {result.total_latency_ms > 0 && (
                 <p className="text-[10px] text-gray-400 mt-3">
-                  Latency: {(result.total_latency_ms / 1000).toFixed(1)}s
+                  Analysis time: {result.total_latency_ms >= 60000
+                    ? `${Math.floor(result.total_latency_ms / 60000)}m ${Math.round((result.total_latency_ms % 60000) / 1000)}s`
+                    : `${(result.total_latency_ms / 1000).toFixed(1)}s`
+                  }
                 </p>
               )}
             </div>
@@ -176,34 +196,49 @@ export default function SecondOpinionPanel({ loading, result, error }) {
                   Verified Biomedical Relationships ({result.triplets_verified.length})
                 </h4>
                 <div className="space-y-2">
-                  {result.triplets_verified.map((t, i) => (
-                    <div key={i} className="flex flex-col gap-1 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="px-2 py-0.5 bg-purple-100 text-purple-800 text-xs font-medium rounded">
-                          {t.head}
-                        </span>
-                        <span className="text-xs text-gray-400 font-mono">{t.relation}</span>
-                        <span className="px-2 py-0.5 bg-purple-100 text-purple-800 text-xs font-medium rounded">
-                          {t.tail}
-                        </span>
-                        {t.confidence && (
-                          <span className={`px-1.5 py-0.5 text-[10px] font-semibold rounded ${CONFIDENCE_COLORS[t.confidence] || 'bg-gray-100 text-gray-600'}`}>
-                            {t.confidence}
+                  {result.triplets_verified.map((t, i) => {
+                    const verified = isVerified(t.answer);
+                    return (
+                      <div key={i} className={`flex flex-col gap-1.5 p-3 rounded-lg border ${
+                        verified ? 'bg-green-50/50 border-green-200' : 'bg-gray-50 border-gray-200'
+                      }`}>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {/* Verdict icon */}
+                          {verified ? (
+                            <span className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            </span>
+                          ) : (
+                            <span className="w-5 h-5 rounded-full bg-gray-400 flex items-center justify-center flex-shrink-0">
+                              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </span>
+                          )}
+                          <span className="px-2 py-0.5 bg-indigo-100 text-indigo-800 text-xs font-medium rounded">
+                            {t.head}
                           </span>
-                        )}
-                        {t.priority && (
-                          <span className="text-[10px] text-gray-400">({t.priority})</span>
+                          <span className="text-xs text-gray-400 font-mono">{t.relation}</span>
+                          <span className="px-2 py-0.5 bg-indigo-100 text-indigo-800 text-xs font-medium rounded">
+                            {t.tail}
+                          </span>
+                          {t.confidence && (
+                            <span className={`px-1.5 py-0.5 text-[10px] font-semibold rounded ${CONFIDENCE_COLORS[t.confidence] || 'bg-gray-100 text-gray-600'}`}>
+                              {t.confidence}
+                            </span>
+                          )}
+                          {t.priority && (
+                            <span className="text-[10px] text-gray-400 uppercase">{t.priority}</span>
+                          )}
+                        </div>
+                        {t.clinical_note && (
+                          <p className="text-xs text-gray-600 ml-7">{t.clinical_note}</p>
                         )}
                       </div>
-                      <p className="text-xs text-gray-700">{t.answer}</p>
-                      {t.clinical_note && (
-                        <p className="text-xs text-gray-500 italic">{t.clinical_note}</p>
-                      )}
-                      {t.adapter_used && (
-                        <p className="text-[10px] text-gray-400">Adapter: {t.adapter_used}</p>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
