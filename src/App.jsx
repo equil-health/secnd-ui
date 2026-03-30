@@ -10,6 +10,7 @@ import PulsePage from './pages/PulsePage';
 import BreakingPage from './pages/BreakingPage';
 import LoginPage from './pages/LoginPage';
 import AdminPage from './pages/AdminPage';
+import SecondOpinionPage from './pages/SecondOpinionPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 export default function App() {
@@ -69,6 +70,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <HomePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/second-opinion"
+        element={
+          <ProtectedRoute>
+            <SecondOpinionPage />
           </ProtectedRoute>
         }
       />

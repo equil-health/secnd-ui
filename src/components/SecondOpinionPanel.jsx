@@ -157,15 +157,42 @@ export default function SecondOpinionPanel({ loading, result, error }) {
       {/* Result */}
       {result && (
         <div className="space-y-4">
-          {/* Clinical Answer */}
+          {/* SDSS-style top diagnosis badge (if present) */}
+          {result.top_diagnosis && (
+            <div className="bg-white border-2 border-indigo-200 rounded-xl p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">Top Diagnosis</p>
+                <p className="text-lg font-bold text-indigo-900">{result.top_diagnosis}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Critical flags (SDSS) */}
+          {result.has_critical_flags && (
+            <div className="bg-red-600 text-white rounded-xl p-3 flex items-center gap-2 text-sm font-bold">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" />
+              </svg>
+              CRITICAL SAFETY FLAG DETECTED
+            </div>
+          )}
+
+          {/* Synthesis (SDSS) or Clinical Answer (legacy) */}
           <div className={`bg-white border rounded-xl border-l-4 shadow-sm ${
-            result.has_critical_safety_flag || hasCaution(result.clinical_answer)
+            result.has_critical_flags || result.has_critical_safety_flag || hasCaution(result.clinical_answer)
               ? 'border-l-red-400'
               : 'border-l-indigo-400'
           }`}>
             <div className="px-5 py-4">
               <div className="flex items-center justify-between mb-2">
-                <h4 className="text-sm font-bold text-gray-800">Clinical Answer</h4>
+                <h4 className="text-sm font-bold text-gray-800">
+                  {result.synthesis ? 'Second Opinion Report' : 'Clinical Answer'}
+                </h4>
                 {(result.has_critical_safety_flag || hasCaution(result.clinical_answer)) && (
                   <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-semibold rounded-full flex items-center gap-1">
                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -179,23 +206,70 @@ export default function SecondOpinionPanel({ loading, result, error }) {
                 <p className="text-xs text-indigo-600 font-medium mb-2">Intent: {result.query_intent}</p>
               )}
               <div className="prose prose-sm max-w-none">
-                {result.clinical_answer
-                  ? <FormattedMarkdown content={result.clinical_answer} />
-                  : <p className="text-sm text-gray-400">No clinical answer returned.</p>
+                {result.synthesis
+                  ? <FormattedMarkdown content={result.synthesis} />
+                  : result.clinical_answer
+                    ? <FormattedMarkdown content={result.clinical_answer} />
+                    : <p className="text-sm text-gray-400">No clinical answer returned.</p>
                 }
               </div>
-              {result.total_latency_ms > 0 && (
+              {(result.total_latency_ms > 0 || result.total_ms > 0) && (
                 <p className="text-[10px] text-gray-400 mt-3">
-                  Analysis time: {result.total_latency_ms >= 60000
-                    ? `${Math.floor(result.total_latency_ms / 60000)}m ${Math.round((result.total_latency_ms % 60000) / 1000)}s`
-                    : `${(result.total_latency_ms / 1000).toFixed(1)}s`
-                  }
+                  Analysis time: {(() => {
+                    const ms = result.total_ms || result.total_latency_ms;
+                    return ms >= 60000
+                      ? `${Math.floor(ms / 60000)}m ${Math.round((ms % 60000) / 1000)}s`
+                      : `${(ms / 1000).toFixed(1)}s`;
+                  })()}
                 </p>
               )}
             </div>
           </div>
 
-          {/* Verified Triplets */}
+          {/* SDSS p2_differential — verified hypotheses */}
+          {result.p2_differential?.length > 0 && (
+            <div className="bg-white border rounded-xl shadow-sm">
+              <div className="px-5 py-4">
+                <h4 className="text-sm font-bold text-gray-800 mb-3">
+                  KG-Verified Differential ({result.p2_differential.length})
+                </h4>
+                <div className="space-y-2">
+                  {result.p2_differential.map((dx, i) => {
+                    const support = dx.kg_support || 'Not Found in KG';
+                    const barColor = support.includes('Strongly') ? 'bg-green-500'
+                      : support.includes('Partially') ? 'bg-amber-500'
+                      : support.includes('Questioned') ? 'bg-red-500' : 'bg-gray-400';
+                    return (
+                      <div key={i} className="p-3 rounded-lg border border-gray-200">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-semibold text-gray-900">{dx.diagnosis}</span>
+                          <span className={`px-1.5 py-0.5 text-[10px] font-semibold rounded ${
+                            support.includes('Strongly') ? 'bg-green-100 text-green-800'
+                            : support.includes('Partially') ? 'bg-amber-100 text-amber-800'
+                            : support.includes('Questioned') ? 'bg-red-100 text-red-800'
+                            : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {support}
+                          </span>
+                          {dx.likelihood && (
+                            <span className="text-[10px] text-gray-500">{dx.likelihood}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <div className="flex-1 bg-gray-100 rounded-full h-1.5 max-w-[160px]">
+                            <div className={`h-1.5 rounded-full ${barColor}`} style={{ width: `${(dx.kg_score || 0) * 100}%` }} />
+                          </div>
+                          <span className="text-[10px] text-gray-500 font-mono">{((dx.kg_score || 0) * 100).toFixed(0)}%</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Legacy triplets_verified (from /query endpoint) */}
           {result.triplets_verified?.length > 0 && (
             <div className="bg-white border rounded-xl shadow-sm">
               <div className="px-5 py-4">
@@ -211,7 +285,6 @@ export default function SecondOpinionPanel({ loading, result, error }) {
                     return (
                       <div key={i} className={`flex flex-col gap-1.5 p-3 rounded-lg border ${borderColor}`}>
                         <div className="flex items-center gap-2 flex-wrap">
-                          {/* Verdict icon */}
                           {verdict === 'verified' ? (
                             <span className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
                               <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -230,11 +303,11 @@ export default function SecondOpinionPanel({ loading, result, error }) {
                             </span>
                           )}
                           <span className="px-2 py-0.5 bg-indigo-100 text-indigo-800 text-xs font-medium rounded">
-                            {t.head || '—'}
+                            {t.head || '\u2014'}
                           </span>
-                          <span className="text-xs text-gray-400 font-mono">{t.relation || '→'}</span>
+                          <span className="text-xs text-gray-400 font-mono">{t.relation || '\u2192'}</span>
                           <span className="px-2 py-0.5 bg-indigo-100 text-indigo-800 text-xs font-medium rounded">
-                            {t.tail || '—'}
+                            {t.tail || '\u2014'}
                           </span>
                           {t.confidence && (
                             <span className={`px-1.5 py-0.5 text-[10px] font-semibold rounded ${CONFIDENCE_COLORS[t.confidence] || 'bg-gray-100 text-gray-600'}`}>

@@ -169,20 +169,27 @@ export default function LandingPage() {
 
                 {/* Expanded sub-options */}
                 {isExpanded && (
-                  <div className="mt-3 grid grid-cols-3 gap-3 animate-fade-in-up">
+                  <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3 animate-fade-in-up">
+                    <button
+                      onClick={() => navigate('/second-opinion')}
+                      className="rounded-xl px-5 py-3 text-sm font-semibold transition bg-purple-600 hover:bg-purple-700 text-white"
+                    >
+                      SDSS
+                      <span className="block text-xs font-normal mt-0.5 opacity-80">MedGemma + PrimeKG</span>
+                    </button>
+                    <button
+                      onClick={() => navigate('/submit')}
+                      className={`rounded-xl px-5 py-3 text-sm font-semibold transition ${ac.button}`}
+                    >
+                      Upload
+                      <span className="block text-xs font-normal mt-0.5 opacity-80">Submit your case</span>
+                    </button>
                     <button
                       onClick={() => navigate('/demo')}
                       className={`rounded-xl px-5 py-3 text-sm font-semibold transition ${ac.buttonOutline}`}
                     >
                       Demo
                       <span className="block text-xs font-normal mt-0.5 opacity-70">Pre-built scenarios</span>
-                    </button>
-                    <button
-                      onClick={() => navigate('/submit')}
-                      className={`rounded-xl px-5 py-3 text-sm font-semibold transition ${ac.button}`}
-                    >
-                      Chat
-                      <span className="block text-xs font-normal mt-0.5 opacity-80">Submit your case</span>
                     </button>
                     <button
                       onClick={() => navigate('/history')}
