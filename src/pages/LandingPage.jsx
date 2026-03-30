@@ -169,35 +169,34 @@ export default function LandingPage() {
 
                 {/* Expanded sub-options */}
                 {isExpanded && (
-                  <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3 animate-fade-in-up">
+                  <div className="mt-3 space-y-2 animate-fade-in-up">
                     <button
                       onClick={() => navigate('/second-opinion')}
-                      className="rounded-xl px-5 py-3 text-sm font-semibold transition bg-purple-600 hover:bg-purple-700 text-white"
+                      className="w-full rounded-xl px-4 py-3 text-sm font-semibold transition bg-purple-600 hover:bg-purple-700 text-white text-left flex items-center justify-between"
                     >
-                      SDSS
-                      <span className="block text-xs font-normal mt-0.5 opacity-80">MedGemma + PrimeKG</span>
+                      <span>SDSS Second Opinion</span>
+                      <span className="text-xs font-normal opacity-80">MedGemma + PrimeKG</span>
                     </button>
-                    <button
-                      onClick={() => navigate('/submit')}
-                      className={`rounded-xl px-5 py-3 text-sm font-semibold transition ${ac.button}`}
-                    >
-                      Upload
-                      <span className="block text-xs font-normal mt-0.5 opacity-80">Submit your case</span>
-                    </button>
-                    <button
-                      onClick={() => navigate('/demo')}
-                      className={`rounded-xl px-5 py-3 text-sm font-semibold transition ${ac.buttonOutline}`}
-                    >
-                      Demo
-                      <span className="block text-xs font-normal mt-0.5 opacity-70">Pre-built scenarios</span>
-                    </button>
-                    <button
-                      onClick={() => navigate('/history')}
-                      className={`rounded-xl px-5 py-3 text-sm font-semibold transition ${ac.buttonOutline}`}
-                    >
-                      History
-                      <span className="block text-xs font-normal mt-0.5 opacity-70">Past cases &amp; reports</span>
-                    </button>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        onClick={() => navigate('/submit')}
+                        className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition ${ac.button}`}
+                      >
+                        Upload
+                      </button>
+                      <button
+                        onClick={() => navigate('/demo')}
+                        className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition ${ac.buttonOutline}`}
+                      >
+                        Demo
+                      </button>
+                      <button
+                        onClick={() => navigate('/history')}
+                        className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition ${ac.buttonOutline}`}
+                      >
+                        History
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

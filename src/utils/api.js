@@ -304,7 +304,7 @@ const MEDGEMMA_BASE = 'https://doubtlessly-unprejudicial-marilyn.ngrok-free.dev'
 export async function queryMedGemma(query, indiaContext = false) {
   const res = await fetch(`${MEDGEMMA_BASE}/query`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
     body: JSON.stringify({ query, india_context: indiaContext }),
   });
   if (!res.ok) {
@@ -316,15 +316,16 @@ export async function queryMedGemma(query, indiaContext = false) {
 
 // ── SDSS v1.0 Pipeline (GPU Pod) ───────────────────────────────
 const SDSS_BASE = MEDGEMMA_BASE;
+const NGROK_HEADERS = { 'ngrok-skip-browser-warning': 'true' };
 
 export async function sdssHealth() {
-  const res = await fetch(`${SDSS_BASE}/health`);
+  const res = await fetch(`${SDSS_BASE}/health`, { headers: NGROK_HEADERS });
   if (!res.ok) throw new Error('SDSS server unreachable');
   return res.json();
 }
 
 export async function sdssAdapters() {
-  const res = await fetch(`${SDSS_BASE}/adapters`);
+  const res = await fetch(`${SDSS_BASE}/adapters`, { headers: NGROK_HEADERS });
   if (!res.ok) throw new Error('Failed to fetch adapters');
   return res.json();
 }
@@ -335,7 +336,7 @@ export async function sdssSecondOpinion(caseText, mode = 'standard') {
   try {
     const res = await fetch(`${SDSS_BASE}/second_opinion`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...NGROK_HEADERS },
       body: JSON.stringify({ case_text: caseText, mode }),
       signal: controller.signal,
     });
@@ -358,7 +359,7 @@ export async function sdssDifferential(caseText) {
   try {
     const res = await fetch(`${SDSS_BASE}/differential`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...NGROK_HEADERS },
       body: JSON.stringify({ case_text: caseText }),
       signal: controller.signal,
     });
@@ -378,7 +379,7 @@ export async function sdssDifferential(caseText) {
 export async function sdssVerify(head, relation, tail) {
   const res = await fetch(`${SDSS_BASE}/verify`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...NGROK_HEADERS },
     body: JSON.stringify({ head, relation, tail }),
   });
   if (!res.ok) {
@@ -391,7 +392,7 @@ export async function sdssVerify(head, relation, tail) {
 export async function sdssVerifyBatch(triplets) {
   const res = await fetch(`${SDSS_BASE}/verify_batch`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...NGROK_HEADERS },
     body: JSON.stringify({ triplets }),
   });
   if (!res.ok) {
