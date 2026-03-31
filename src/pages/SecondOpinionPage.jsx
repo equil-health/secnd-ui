@@ -89,16 +89,13 @@ export default function SecondOpinionPage() {
   const [showStorm, setShowStorm] = useState(false);
   const [taskId, setTaskId] = useState(null);
 
+  const timerRef = useRef(null);
   const stageTimerRef = useRef(null);
 
-  // ── Async polling ───────────────────────────────────────────
-  const { status: pollStatus, result: pollResult, error: pollError, elapsed: pollElapsed, reset: resetPoll } = useSdssPolling(taskId);
+  // ── WebSocket + polling fallback ────────────────────────────
+  const { status: pollStatus, result: pollResult, error: pollError, reset: resetPoll } = useSdssPolling(taskId);
 
-  // React to poll updates
-  useEffect(() => {
-    if (pollElapsed) setElapsed(Math.floor(pollElapsed));
-  }, [pollElapsed]);
-
+  // React to status updates
   useEffect(() => {
     if (pollStatus === 'complete' && pollResult) {
       setResult(pollResult);
@@ -108,6 +105,20 @@ export default function SecondOpinionPage() {
       setLoading(false);
     }
   }, [pollStatus, pollResult, pollError]);
+
+  // ── Local elapsed timer (ticks every second while loading) ──
+  useEffect(() => {
+    if (loading) {
+      const start = Date.now();
+      setElapsed(0);
+      timerRef.current = setInterval(
+        () => setElapsed(Math.floor((Date.now() - start) / 1000)), 1000
+      );
+    } else {
+      clearInterval(timerRef.current);
+    }
+    return () => clearInterval(timerRef.current);
+  }, [loading]);
 
   // ── Health check on mount ────────────────────────────────────
   useEffect(() => {

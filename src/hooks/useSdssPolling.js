@@ -1,57 +1,93 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { sdssGetTask } from '../utils/api';
+import useWebSocket from './useWebSocket';
 
-export default function useSdssPolling(taskId, intervalMs = 5000) {
+/**
+ * Subscribes to SDSS task status via WebSocket (primary) with
+ * HTTP polling fallback every 10s in case WebSocket fails.
+ */
+export default function useSdssPolling(taskId) {
   const [status, setStatus] = useState(null);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [elapsed, setElapsed] = useState(0);
-  const timerRef = useRef(null);
+  const pollRef = useRef(null);
+  const doneRef = useRef(false);
 
   const reset = useCallback(() => {
     setStatus(null);
     setResult(null);
     setError(null);
     setElapsed(0);
-    clearInterval(timerRef.current);
-    timerRef.current = null;
+    doneRef.current = false;
+    clearInterval(pollRef.current);
+    pollRef.current = null;
   }, []);
 
+  // ── WebSocket handler (primary) ──────────────────────────────
+  const handleMessage = useCallback((data) => {
+    if (data.type === 'complete') {
+      doneRef.current = true;
+      setStatus('complete');
+      setResult(data.result);
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    } else if (data.type === 'error') {
+      doneRef.current = true;
+      setStatus('failed');
+      setError(data.error || 'Analysis failed');
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }, []);
+
+  useWebSocket(taskId, handleMessage, 'sdss');
+
+  // ── Polling fallback ─────────────────────────────────────────
   useEffect(() => {
     if (!taskId) return;
-    let active = true;
+    doneRef.current = false;
 
     const poll = async () => {
+      if (doneRef.current) return;
       try {
         const data = await sdssGetTask(taskId);
-        if (!active) return;
+        if (doneRef.current) return;
 
-        setStatus(data.status);
         setElapsed(data.elapsed_seconds || 0);
 
         if (data.status === 'complete') {
+          doneRef.current = true;
+          setStatus('complete');
           setResult(data.result);
-          clearInterval(timerRef.current);
-          timerRef.current = null;
+          clearInterval(pollRef.current);
+          pollRef.current = null;
         } else if (data.status === 'failed') {
+          doneRef.current = true;
+          setStatus('failed');
           setError(data.error || 'Analysis failed');
-          clearInterval(timerRef.current);
-          timerRef.current = null;
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+        } else {
+          setStatus(data.status);
         }
       } catch {
-        // Swallow poll errors — will retry next interval
+        // Swallow poll errors — WebSocket or next poll will catch up
       }
     };
 
-    poll();
-    timerRef.current = setInterval(poll, intervalMs);
+    // Start polling after a delay (give WebSocket a chance to connect first)
+    const startTimer = setTimeout(() => {
+      poll();
+      pollRef.current = setInterval(poll, 10000);
+    }, 5000);
 
     return () => {
-      active = false;
-      clearInterval(timerRef.current);
-      timerRef.current = null;
+      clearTimeout(startTimer);
+      clearInterval(pollRef.current);
+      pollRef.current = null;
     };
-  }, [taskId, intervalMs]);
+  }, [taskId]);
 
   return { status, result, error, elapsed, reset };
 }
