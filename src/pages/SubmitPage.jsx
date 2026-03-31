@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { submitCaseWithFiles, queryMedGemma } from '../utils/api';
+import { submitCaseWithFiles, sdssSubmit } from '../utils/api';
+import useSdssPolling from '../hooks/useSdssPolling';
 import useAppStore from '../stores/appStore';
 import usePipeline from '../hooks/usePipeline';
 import PipelineTracker from '../components/PipelineTracker';
@@ -44,12 +45,16 @@ export default function SubmitPage() {
   const [medgemmaResult, setMedgemmaResult] = useState(null);
   const [medgemmaLoading, setMedgemmaLoading] = useState(false);
   const [indiaContext, setIndiaContext] = useState(false);
+  const [medgemmaTaskId, setMedgemmaTaskId] = useState(null);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
 
   const { pipelineStatus, setActiveCase, setPipelineSteps, setPipelineStatus } = useAppStore();
   const { user, updateUser } = useAuthStore();
   const addToast = useToastStore((s) => s.addToast);
+
+  // ── SDSS async polling for medgemma mode ────────────────────
+  const { status: mgStatus, result: mgResult, error: mgError } = useSdssPolling(medgemmaTaskId);
 
   const isDemo = user?.is_demo;
   const maxReports = user?.max_reports;
@@ -67,6 +72,19 @@ export default function SubmitPage() {
       return () => clearTimeout(timer);
     }
   }, [pipelineStatus, caseId, navigate]);
+
+  // React to SDSS poll completion (medgemma mode)
+  useEffect(() => {
+    if (mgStatus === 'complete' && mgResult) {
+      setMedgemmaResult(mgResult);
+      setMedgemmaLoading(false);
+      addToast('Analysis complete', 'success');
+    } else if (mgStatus === 'failed') {
+      setError(mgError || 'Query failed. Please try again.');
+      setSubmitted(false);
+      setMedgemmaLoading(false);
+    }
+  }, [mgStatus, mgResult, mgError, addToast]);
 
   const addFiles = useCallback((newFiles) => {
     const valid = [];
@@ -152,13 +170,11 @@ export default function SubmitPage() {
 
     try {
       const query = caseText.trim() + '\n\nI need a second opinion on this case.';
-      const data = await queryMedGemma(query, indiaContext);
-      setMedgemmaResult(data);
-      addToast('Analysis complete', 'success');
+      const { task_id } = await sdssSubmit(query, 'medgemma', indiaContext);
+      setMedgemmaTaskId(task_id);
     } catch (err) {
-      setError(err.message || 'Query failed. Please try again.');
+      setError(err.message || 'Submission failed. Please try again.');
       setSubmitted(false);
-    } finally {
       setMedgemmaLoading(false);
     }
   };

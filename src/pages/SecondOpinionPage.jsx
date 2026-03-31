@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { sdssSecondOpinion, sdssHealth } from '../utils/api';
+import { sdssSubmit, sdssHealth } from '../utils/api';
+import useSdssPolling from '../hooks/useSdssPolling';
 import FormattedMarkdown from '../utils/formatReport';
 import UserBadge from '../components/UserBadge';
 
@@ -86,9 +87,27 @@ export default function SecondOpinionPage() {
   const [expandedDx, setExpandedDx] = useState(null);
   const [showP1, setShowP1] = useState(false);
   const [showStorm, setShowStorm] = useState(false);
+  const [taskId, setTaskId] = useState(null);
 
-  const timerRef = useRef(null);
   const stageTimerRef = useRef(null);
+
+  // ── Async polling ───────────────────────────────────────────
+  const { status: pollStatus, result: pollResult, error: pollError, elapsed: pollElapsed, reset: resetPoll } = useSdssPolling(taskId);
+
+  // React to poll updates
+  useEffect(() => {
+    if (pollElapsed) setElapsed(Math.floor(pollElapsed));
+  }, [pollElapsed]);
+
+  useEffect(() => {
+    if (pollStatus === 'complete' && pollResult) {
+      setResult(pollResult);
+      setLoading(false);
+    } else if (pollStatus === 'failed') {
+      setError(pollError || 'Analysis failed. Please try again.');
+      setLoading(false);
+    }
+  }, [pollStatus, pollResult, pollError]);
 
   // ── Health check on mount ────────────────────────────────────
   useEffect(() => {
@@ -96,21 +115,6 @@ export default function SecondOpinionPage() {
       .then((data) => { setServerOnline(true); setServerInfo(data); })
       .catch(() => setServerOnline(false));
   }, []);
-
-  // ── Elapsed timer ────────────────────────────────────────────
-  useEffect(() => {
-    if (loading) {
-      const start = Date.now();
-      setElapsed(0);
-      setActiveStage(0);
-      timerRef.current = setInterval(
-        () => setElapsed(Math.floor((Date.now() - start) / 1000)), 1000
-      );
-    } else {
-      clearInterval(timerRef.current);
-    }
-    return () => clearInterval(timerRef.current);
-  }, [loading]);
 
   // ── Animated stage progression ───────────────────────────────
   useEffect(() => {
@@ -139,11 +143,10 @@ export default function SecondOpinionPage() {
     setResult(null);
     setLoading(true);
     try {
-      const data = await sdssSecondOpinion(caseText.trim(), mode);
-      setResult(data);
+      const { task_id } = await sdssSubmit(caseText.trim(), mode);
+      setTaskId(task_id);
     } catch (err) {
-      setError(err.message || 'Analysis failed. Please try again.');
-    } finally {
+      setError(err.message || 'Submission failed. Please try again.');
       setLoading(false);
     }
   };
@@ -157,6 +160,8 @@ export default function SecondOpinionPage() {
     setShowStorm(false);
     setActiveStage(0);
     setElapsed(0);
+    setTaskId(null);
+    resetPoll();
   };
 
   // ── Format elapsed ──────────────────────────────────────────

@@ -298,106 +298,22 @@ export async function getBreakingTopics() {
   return res.json();
 }
 
-// ── MedGemma Second Opinion ─────────────────────────────────────
-const MEDGEMMA_BASE = 'https://doubtlessly-unprejudicial-marilyn.ngrok-free.dev';
+// ── SDSS v2.0 (async via backend) ──────────────────────────────
 
-export async function queryMedGemma(query, indiaContext = false) {
-  const res = await fetch(`${MEDGEMMA_BASE}/query`, {
+export async function sdssSubmit(caseText, mode = 'standard', indiaContext = false) {
+  const res = await request(`${BASE}/sdss/submit`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
-    body: JSON.stringify({ query, india_context: indiaContext }),
+    body: JSON.stringify({ case_text: caseText, mode, india_context: indiaContext }),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || res.statusText);
-  }
-  return res.json();
+  return res.json(); // { task_id }
 }
 
-// ── SDSS v1.0 Pipeline (GPU Pod) ───────────────────────────────
-const SDSS_BASE = MEDGEMMA_BASE;
-const NGROK_HEADERS = { 'ngrok-skip-browser-warning': 'true' };
+export async function sdssGetTask(taskId) {
+  const res = await request(`${BASE}/sdss/task/${taskId}`);
+  return res.json(); // { task_id, status, result, error, elapsed_seconds }
+}
 
 export async function sdssHealth() {
-  const res = await fetch(`${SDSS_BASE}/health`, { headers: NGROK_HEADERS });
-  if (!res.ok) throw new Error('SDSS server unreachable');
-  return res.json();
-}
-
-export async function sdssAdapters() {
-  const res = await fetch(`${SDSS_BASE}/adapters`, { headers: NGROK_HEADERS });
-  if (!res.ok) throw new Error('Failed to fetch adapters');
-  return res.json();
-}
-
-export async function sdssSecondOpinion(caseText, mode = 'standard') {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 20 * 60 * 1000);
-  try {
-    const res = await fetch(`${SDSS_BASE}/second_opinion`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...NGROK_HEADERS },
-      body: JSON.stringify({ case_text: caseText, mode }),
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: res.statusText }));
-      throw new Error(err.detail || res.statusText);
-    }
-    return res.json();
-  } catch (e) {
-    clearTimeout(timeoutId);
-    if (e.name === 'AbortError') throw new Error('Analysis timed out after 20 minutes. Please try again.');
-    throw e;
-  }
-}
-
-export async function sdssDifferential(caseText) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 20 * 60 * 1000);
-  try {
-    const res = await fetch(`${SDSS_BASE}/differential`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...NGROK_HEADERS },
-      body: JSON.stringify({ case_text: caseText }),
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: res.statusText }));
-      throw new Error(err.detail || res.statusText);
-    }
-    return res.json();
-  } catch (e) {
-    clearTimeout(timeoutId);
-    if (e.name === 'AbortError') throw new Error('Differential timed out. Please try again.');
-    throw e;
-  }
-}
-
-export async function sdssVerify(head, relation, tail) {
-  const res = await fetch(`${SDSS_BASE}/verify`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...NGROK_HEADERS },
-    body: JSON.stringify({ head, relation, tail }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || res.statusText);
-  }
-  return res.json();
-}
-
-export async function sdssVerifyBatch(triplets) {
-  const res = await fetch(`${SDSS_BASE}/verify_batch`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...NGROK_HEADERS },
-    body: JSON.stringify({ triplets }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || res.statusText);
-  }
+  const res = await request(`${BASE}/sdss/health`);
   return res.json();
 }
