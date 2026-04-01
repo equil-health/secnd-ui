@@ -421,29 +421,33 @@ export default function SecondOpinionPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* Export dropdown */}
-                  <div className="relative group">
-                    <button className="px-3 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition flex items-center gap-1.5">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                      </svg>
-                      Export
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                      </svg>
-                    </button>
-                    <div className="absolute right-0 mt-1 w-36 bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                      <button onClick={() => exportSdssPDF(result, mode)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded-t-lg flex items-center gap-2">
-                        <span className="text-red-500 text-base">PDF</span> Export PDF
-                      </button>
-                      <button onClick={() => exportSdssDOCX(result, mode)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2">
-                        <span className="text-blue-500 text-base">DOC</span> Export DOCX
-                      </button>
-                      <button onClick={() => exportSdssHTML(result, mode)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded-b-lg flex items-center gap-2">
-                        <span className="text-green-500 text-base">HTM</span> Export HTML
-                      </button>
-                    </div>
-                  </div>
+                  <button
+                    onClick={() => exportSdssPDF(result, mode)}
+                    className="px-3 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition flex items-center gap-1.5"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                    </svg>
+                    PDF
+                  </button>
+                  <button
+                    onClick={() => exportSdssDOCX(result, mode)}
+                    className="px-3 py-2 text-sm font-medium text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition flex items-center gap-1.5"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                    </svg>
+                    DOCX
+                  </button>
+                  <button
+                    onClick={() => exportSdssHTML(result, mode)}
+                    className="px-3 py-2 text-sm font-medium text-green-600 border border-green-200 rounded-lg hover:bg-green-50 transition flex items-center gap-1.5"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
+                    </svg>
+                    HTML
+                  </button>
                   <button
                     onClick={handleReset}
                     className="px-4 py-2 text-sm font-medium text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition"
