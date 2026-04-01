@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { sdssSubmit, sdssHealth } from '../utils/api';
+import { sdssSubmit, sdssSubmitWithFiles, sdssHealth } from '../utils/api';
 import useSdssPolling from '../hooks/useSdssPolling';
 import FormattedMarkdown from '../utils/formatReport';
 import UserBadge from '../components/UserBadge';
@@ -13,6 +13,29 @@ const STAGES = [
   { label: 'Stage 3: Verifying against knowledge graph', est: 480 },
   { label: 'Stage 4: Synthesising second opinion',     est: 20  },
 ];
+
+// ── File helpers ──────────────────────────────────────────────
+const ALLOWED_TYPES = [
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/msword',
+  'image/jpeg',
+  'image/png',
+];
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+
+function fileIcon(type) {
+  if (type === 'application/pdf') return 'PDF';
+  if (type?.includes('word') || type?.includes('document')) return 'DOC';
+  if (type?.startsWith('image/')) return 'IMG';
+  return 'FILE';
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 export default function SecondOpinionPage() {
   const [caseText, setCaseText] = useState('');
@@ -27,9 +50,12 @@ export default function SecondOpinionPage() {
   const [showFullReasoning, setShowFullReasoning] = useState(false);
   const [showDeepDive, setShowDeepDive] = useState(false);
   const [taskId, setTaskId] = useState(null);
+  const [files, setFiles] = useState([]);
+  const [dragOver, setDragOver] = useState(false);
 
   const timerRef = useRef(null);
   const stageTimerRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const { status: pollStatus, result: pollResult, error: pollError, reset: resetPoll } = useSdssPolling(taskId);
 
@@ -81,13 +107,53 @@ export default function SecondOpinionPage() {
     return () => clearTimeout(stageTimerRef.current);
   }, [loading]);
 
+  // ── File management ───────────────────────────────────────────
+  const addFiles = (newFiles) => {
+    const valid = [];
+    for (const f of newFiles) {
+      if (!ALLOWED_TYPES.includes(f.type)) {
+        setError(`Unsupported file: ${f.name}. Allowed: PDF, DOCX, JPG, PNG.`);
+        return;
+      }
+      if (f.size > MAX_FILE_SIZE) {
+        setError(`File too large: ${f.name} (${formatSize(f.size)}). Max 50 MB.`);
+        return;
+      }
+      valid.push(f);
+    }
+    setFiles(prev => [...prev, ...valid]);
+    setError(null);
+  };
+
+  const removeFile = (index) => setFiles(prev => prev.filter((_, i) => i !== index));
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    if (e.dataTransfer.files.length) addFiles(Array.from(e.dataTransfer.files));
+  };
+
   const handleSubmit = async () => {
-    if (!caseText.trim()) return;
+    if (!caseText.trim() && files.length === 0) return;
     setError(null);
     setResult(null);
     setLoading(true);
     try {
-      const { task_id } = await sdssSubmit(caseText.trim(), mode);
+      let task_id;
+      if (files.length > 0) {
+        // Multipart submit with files
+        const formData = new FormData();
+        formData.append('case_text', caseText.trim());
+        formData.append('mode', mode);
+        formData.append('india_context', false);
+        for (const f of files) formData.append('files', f);
+        const resp = await sdssSubmitWithFiles(formData);
+        task_id = resp.task_id;
+      } else {
+        // JSON submit (text only)
+        const resp = await sdssSubmit(caseText.trim(), mode);
+        task_id = resp.task_id;
+      }
       setTaskId(task_id);
     } catch (err) {
       setError(err.message || 'Submission failed. Please try again.');
@@ -99,6 +165,7 @@ export default function SecondOpinionPage() {
     setResult(null);
     setError(null);
     setCaseText('');
+    setFiles([]);
     setShowFullReasoning(false);
     setShowDeepDive(false);
     setActiveStage(0);
@@ -183,12 +250,79 @@ export default function SecondOpinionPage() {
                 </button>
               </div>
 
+              {/* Case text input */}
               <textarea
                 value={caseText}
                 onChange={(e) => setCaseText(e.target.value)}
                 placeholder="Paste the full clinical case here — patient demographics, presenting complaint, history, exam findings, lab results, imaging, and referring diagnosis..."
-                className="w-full h-56 px-4 py-3 border rounded-xl resize-y text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                className="w-full h-48 px-4 py-3 border rounded-xl resize-y text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
               />
+
+              {/* File upload zone */}
+              <div
+                className={`mt-3 border-2 border-dashed rounded-xl p-5 text-center transition-colors ${
+                  dragOver
+                    ? 'border-indigo-500 bg-indigo-50'
+                    : 'border-gray-300 bg-white hover:border-gray-400'
+                }`}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+              >
+                <div className="flex items-center justify-center gap-2 text-gray-400">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
+                  </svg>
+                  <p className="text-sm text-gray-500">
+                    Drag & drop files, or{' '}
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-indigo-600 hover:text-indigo-700 font-medium"
+                    >
+                      browse
+                    </button>
+                  </p>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  PDF, DOCX, JPG, PNG — up to 50 MB each
+                </p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".pdf,.docx,.doc,.jpg,.jpeg,.png"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files.length) addFiles(Array.from(e.target.files));
+                    e.target.value = '';
+                  }}
+                />
+              </div>
+
+              {/* File chips */}
+              {files.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {files.map((f, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-white border rounded-full text-sm"
+                    >
+                      <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
+                        {fileIcon(f.type)}
+                      </span>
+                      <span className="text-gray-700 truncate max-w-[180px]">{f.name}</span>
+                      <span className="text-gray-400 text-xs">{formatSize(f.size)}</span>
+                      <button
+                        onClick={() => removeFile(i)}
+                        className="text-gray-400 hover:text-red-500 ml-1 text-xs"
+                      >
+                        x
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {error && (
                 <p className="mt-2 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
@@ -196,7 +330,7 @@ export default function SecondOpinionPage() {
 
               <button
                 onClick={handleSubmit}
-                disabled={!caseText.trim() || serverOnline === false}
+                disabled={(!caseText.trim() && files.length === 0) || serverOnline === false}
                 className={`mt-4 w-full py-3 text-sm font-medium text-white rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${
                   mode === 'zebra' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'
                 }`}

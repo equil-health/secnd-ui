@@ -308,6 +308,20 @@ export async function sdssSubmit(caseText, mode = 'standard', indiaContext = fal
   return res.json(); // { task_id }
 }
 
+export async function sdssSubmitWithFiles(formData) {
+  const res = await fetch(`${BASE}/sdss/submit-with-files`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: formData,
+  });
+  if (res.status === 401) { handle401(); throw new Error('Session expired'); }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || res.statusText);
+  }
+  return res.json(); // { task_id }
+}
+
 export async function sdssGetTask(taskId) {
   const res = await request(`${BASE}/sdss/task/${taskId}`);
   return res.json(); // { task_id, status, result, error, elapsed_seconds }
