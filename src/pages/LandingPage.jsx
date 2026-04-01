@@ -175,7 +175,7 @@ export default function LandingPage() {
                       className="w-full rounded-xl px-4 py-3 text-sm font-semibold transition bg-purple-600 hover:bg-purple-700 text-white text-left flex items-center justify-between"
                     >
                       <span>SDSS Second Opinion</span>
-                      <span className="text-xs font-normal opacity-80">MedGemma + PrimeKG</span>
+                      <span className="text-xs font-normal opacity-80">AI-Powered</span>
                     </button>
                     <div className="grid grid-cols-3 gap-2">
                       <button
