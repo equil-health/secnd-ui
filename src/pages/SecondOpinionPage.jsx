@@ -203,15 +203,6 @@ export default function SecondOpinionPage() {
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               AI system online
             </span>
-            {serverInfo?.model && (
-              <span className="text-gray-400">| {serverInfo.model}</span>
-            )}
-            {serverInfo?.kg_points && (
-              <span className="text-gray-400">| KG: {serverInfo.kg_points.toLocaleString()} relationships</span>
-            )}
-            {serverInfo?.adapters && (
-              <span className="text-gray-400">| {serverInfo.adapters} specialist adapters</span>
-            )}
           </>
         )}
         {serverOnline === false && (
