@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import FormattedMarkdown from '../utils/formatReport';
+import AuditReportViewer from './AuditReportViewer';
+import { exportSdssPDF, exportSdssDOCX, exportSdssHTML } from '../utils/sdssExport';
 
 const CONFIDENCE_COLORS = {
   high: 'bg-green-100 text-green-800',
@@ -32,6 +34,7 @@ const PIPELINE_STEPS = [
 export default function SecondOpinionPanel({ loading, result, error }) {
   const [activeStep, setActiveStep] = useState(0);
   const [elapsed, setElapsed] = useState(0);
+  const [activeTab, setActiveTab] = useState('report');
   const timerRef = useRef(null);
   const stepTimerRef = useRef(null);
 
@@ -157,6 +160,52 @@ export default function SecondOpinionPanel({ loading, result, error }) {
       {/* Result */}
       {result && (
         <div className="space-y-4">
+          {/* Tabs: Report | Audit + Export buttons */}
+          <div className="flex items-center gap-1 border-b">
+            {['report', 'audit'].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === tab
+                    ? 'border-indigo-600 text-indigo-700'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {tab === 'report' ? 'Report' : 'Audit Trail'}
+              </button>
+            ))}
+            <div className="ml-auto flex items-center gap-2 pb-1">
+              {activeTab === 'report' && (
+                <>
+                  <button onClick={() => exportSdssPDF(result)} className="px-2 py-1 text-[11px] border rounded hover:bg-gray-50 text-gray-500">PDF</button>
+                  <button onClick={() => exportSdssDOCX(result)} className="px-2 py-1 text-[11px] border rounded hover:bg-gray-50 text-gray-500">DOCX</button>
+                  <button onClick={() => exportSdssHTML(result)} className="px-2 py-1 text-[11px] border rounded hover:bg-gray-50 text-gray-500">HTML</button>
+                </>
+              )}
+              {activeTab === 'audit' && result._audit && (
+                <button
+                  onClick={() => {
+                    const blob = new Blob([JSON.stringify(result._audit, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url; a.download = 'audit_report.json'; a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="px-2 py-1 text-[11px] border rounded hover:bg-gray-50 text-gray-500"
+                >JSON</button>
+              )}
+            </div>
+          </div>
+
+          {/* Audit tab */}
+          {activeTab === 'audit' && (
+            <AuditReportViewer audit={result._audit} />
+          )}
+
+          {/* Report tab */}
+          {activeTab === 'report' && (
+          <div className="space-y-4">
           {/* SDSS-style top diagnosis badge (if present) */}
           {result.top_diagnosis && (
             <div className="bg-white border-2 border-indigo-200 rounded-xl p-4 flex items-center gap-3">
@@ -327,6 +376,8 @@ export default function SecondOpinionPanel({ loading, result, error }) {
                 </div>
               </div>
             </div>
+          )}
+          </div>
           )}
         </div>
       )}

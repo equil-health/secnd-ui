@@ -11,6 +11,8 @@ import BreakingPage from './pages/BreakingPage';
 import LoginPage from './pages/LoginPage';
 import AdminPage from './pages/AdminPage';
 import SecondOpinionPage from './pages/SecondOpinionPage';
+import SdssHistoryPage from './pages/SdssHistoryPage';
+import SdssReportPage from './pages/SdssReportPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 export default function App() {
@@ -78,6 +80,22 @@ export default function App() {
         element={
           <ProtectedRoute>
             <SecondOpinionPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/second-opinion/history"
+        element={
+          <ProtectedRoute>
+            <SdssHistoryPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/second-opinion/:taskId"
+        element={
+          <ProtectedRoute>
+            <SdssReportPage />
           </ProtectedRoute>
         }
       />

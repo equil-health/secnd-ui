@@ -331,3 +331,13 @@ export async function sdssHealth() {
   const res = await request(`${BASE}/sdss/health`);
   return res.json();
 }
+
+export async function sdssListTasks(page = 1, perPage = 20) {
+  const res = await request(`${BASE}/sdss/tasks?page=${page}&per_page=${perPage}`);
+  return res.json(); // { tasks, total, page, per_page }
+}
+
+export async function sdssGetAudit(taskId) {
+  const res = await request(`${BASE}/sdss/task/${taskId}/audit`);
+  return res.json(); // { task_id, has_audit, audit_report }
+}

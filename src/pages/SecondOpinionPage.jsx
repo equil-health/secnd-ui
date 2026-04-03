@@ -186,6 +186,7 @@ export default function SecondOpinionPage() {
         </Link>
         <nav className="flex items-center gap-4">
           <Link to="/submit" className="text-sm text-gray-500 hover:text-gray-700">Upload</Link>
+          <Link to="/second-opinion/history" className="text-sm text-gray-500 hover:text-gray-700">Archive</Link>
           <Link to="/history" className="text-sm text-gray-500 hover:text-gray-700">History</Link>
           <UserBadge />
         </nav>
