@@ -665,111 +665,8 @@ function ClinicalReport({ result, mode, onReset, showFullReasoning, setShowFullR
           </div>
         )}
 
-        {/* ── References ── */}
-        {result.references?.length > 0 && (
-          <div className="px-6 py-5 border-b border-gray-100">
-            <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2 pl-3 border-l-[3px] border-indigo-500">
-              <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-              </svg>
-              References ({result.references.length})
-            </h2>
-            <ol className="space-y-2">
-              {result.references.map((ref, i) => {
-                const isObj = ref && typeof ref === 'object';
-                const title = isObj ? (ref.title || ref.name || ref.citation || JSON.stringify(ref)) : String(ref);
-                const url = isObj ? (ref.url || ref.link || ref.doi_url || (ref.doi ? `https://doi.org/${ref.doi}` : null) || (ref.pmid ? `https://pubmed.ncbi.nlm.nih.gov/${ref.pmid}/` : null)) : null;
-                const source = isObj ? (ref.source || ref.journal || ref.database) : null;
-                const doi = isObj ? ref.doi : null;
-                const pmid = isObj ? ref.pmid : null;
-                const year = isObj ? ref.year : null;
-
-                return (
-                  <li key={i} className="flex gap-3 text-sm">
-                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] font-bold mt-0.5">
-                      {i + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      {url ? (
-                        <a href={url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 hover:underline font-medium">
-                          {title}
-                        </a>
-                      ) : (
-                        <span className="text-gray-800 font-medium">{title}</span>
-                      )}
-                      <div className="flex flex-wrap gap-2 mt-0.5 text-xs text-gray-400">
-                        {source && <span className="italic">{source}</span>}
-                        {year && <span>{year}</span>}
-                        {doi && (
-                          <a href={`https://doi.org/${doi}`} target="_blank" rel="noopener noreferrer" className="text-indigo-500 hover:underline">
-                            DOI: {doi}
-                          </a>
-                        )}
-                        {pmid && (
-                          <a href={`https://pubmed.ncbi.nlm.nih.gov/${pmid}/`} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:underline">
-                            PMID: {pmid}
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
-          </div>
-        )}
-
-        {/* ── Collapsible: Deep-Dive Article ── */}
-        {result.storm_article && (
-          <div className="border-b border-gray-100">
-            <button
-              onClick={() => setShowDeepDive(!showDeepDive)}
-              className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-gray-50/50 transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-                </svg>
-                <span className="text-sm font-bold text-gray-800">Literature Deep-Dive</span>
-                <span className="text-xs text-gray-400">AI-generated literature synthesis</span>
-              </div>
-              <svg className={`w-5 h-5 text-gray-400 transition-transform ${showDeepDive ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-            {showDeepDive && (
-              <div className="px-6 pb-5 prose prose-sm max-w-none">
-                <FormattedMarkdown content={result.storm_article} />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Collapsible: Full AI Reasoning (P1) ── */}
-        {result.p1_differential && (
-          <div className="border-b border-gray-100">
-            <button
-              onClick={() => setShowFullReasoning(!showFullReasoning)}
-              className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-gray-50/50 transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                </svg>
-                <span className="text-sm font-bold text-gray-800">Full AI Reasoning</span>
-                <span className="text-xs text-gray-400">Complete differential before verification</span>
-              </div>
-              <svg className={`w-5 h-5 text-gray-400 transition-transform ${showFullReasoning ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-            {showFullReasoning && (
-              <div className="px-6 pb-5 prose prose-sm max-w-none">
-                <FormattedMarkdown content={result.p1_differential} />
-              </div>
-            )}
-          </div>
-        )}
+        {/* ── Evidence Base (unified section) ── */}
+        <EvidenceBaseSection result={result} showDeepDive={showDeepDive} setShowDeepDive={setShowDeepDive} showFullReasoning={showFullReasoning} setShowFullReasoning={setShowFullReasoning} />
 
         {/* ── Footer Disclaimer ── */}
         <div className="px-6 py-4 bg-gray-50 rounded-b-xl">
@@ -1047,6 +944,208 @@ function RecommendationsTable({ result }) {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+//  EVIDENCE BASE SECTION — references, deep-dive, full reasoning
+// ═══════════════════════════════════════════════════════════════
+
+function EvidenceBaseSection({ result, showDeepDive, setShowDeepDive, showFullReasoning, setShowFullReasoning }) {
+  const refs = result.references || [];
+  const hasStorm = !!result.storm_article;
+  const hasP1 = !!result.p1_differential;
+
+  if (refs.length === 0 && !hasStorm && !hasP1) return null;
+
+  // Categorize references by quality
+  const verified = refs.filter(r => r && typeof r === 'object' && r.is_verified);
+  const guidelines = refs.filter(r => r && typeof r === 'object' && r.quality_tier === 'guideline');
+  const retracted = refs.filter(r => r && typeof r === 'object' && r.is_retracted);
+
+  return (
+    <div className="px-6 py-5 border-b border-gray-100">
+      <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2 pl-3 border-l-[3px] border-indigo-500">
+        <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+        </svg>
+        Evidence Base
+      </h2>
+
+      {/* Summary stats bar */}
+      {refs.length > 0 && (
+        <div className="flex flex-wrap gap-3 mb-5">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 rounded-lg border border-indigo-100">
+            <span className="text-lg font-bold text-indigo-700">{refs.length}</span>
+            <span className="text-xs text-indigo-600">Sources</span>
+          </div>
+          {verified.length > 0 && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 rounded-lg border border-green-100">
+              <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+              </svg>
+              <span className="text-lg font-bold text-green-700">{verified.length}</span>
+              <span className="text-xs text-green-600">Verified</span>
+            </div>
+          )}
+          {guidelines.length > 0 && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 rounded-lg border border-teal-100">
+              <span className="text-lg font-bold text-teal-700">{guidelines.length}</span>
+              <span className="text-xs text-teal-600">Guidelines</span>
+            </div>
+          )}
+          {retracted.length > 0 && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 rounded-lg border border-red-100">
+              <span className="text-lg font-bold text-red-700">{retracted.length}</span>
+              <span className="text-xs text-red-600">Retracted</span>
+            </div>
+          )}
+          {hasStorm && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 rounded-lg border border-purple-100">
+              <svg className="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+              </svg>
+              <span className="text-xs text-purple-600">STORM Deep Research</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* References list */}
+      {refs.length > 0 && (
+        <div className="mb-4">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">References ({refs.length})</p>
+          <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+            {refs.map((ref, i) => {
+              const isObj = ref && typeof ref === 'object';
+              const title = isObj ? (ref.title || ref.name || ref.citation || String(ref)) : String(ref);
+              const url = isObj ? (ref.url || ref.link || ref.doi_url || (ref.doi ? `https://doi.org/${ref.doi}` : null) || (ref.pmid ? `https://pubmed.ncbi.nlm.nih.gov/${ref.pmid}/` : null)) : null;
+              const source = isObj ? (ref.source || ref.journal || ref.database) : null;
+              const doi = isObj ? ref.doi : null;
+              const pmid = isObj ? ref.pmid : null;
+              const year = isObj ? ref.year : null;
+              const qualityTier = isObj ? ref.quality_tier : null;
+              const citationCount = isObj ? ref.citation_count : null;
+              const isRetracted = isObj ? ref.is_retracted : false;
+              const isOa = isObj ? ref.is_oa : false;
+              const oaUrl = isObj ? ref.oa_url : null;
+
+              const tierBadge = qualityTier ? {
+                landmark: { label: 'Landmark', cls: 'bg-amber-100 text-amber-800' },
+                strong: { label: 'Strong', cls: 'bg-green-100 text-green-800' },
+                'peer-reviewed': { label: 'Peer-reviewed', cls: 'bg-blue-100 text-blue-800' },
+                preprint: { label: 'Preprint', cls: 'bg-gray-100 text-gray-600' },
+                guideline: { label: 'Guideline', cls: 'bg-teal-100 text-teal-800' },
+                retracted: { label: 'RETRACTED', cls: 'bg-red-100 text-red-700 font-bold' },
+                unverified: { label: 'Unverified', cls: 'bg-gray-50 text-gray-500' },
+              }[qualityTier] : null;
+
+              return (
+                <div key={i} className={`flex gap-3 text-sm py-2 px-3 rounded-lg ${isRetracted ? 'bg-red-50 border border-red-200' : i % 2 === 0 ? 'bg-gray-50/50' : ''}`}>
+                  <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5 ${isRetracted ? 'bg-red-200 text-red-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                    {i + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    {isRetracted && (
+                      <span className="text-[10px] font-bold text-red-700 bg-red-100 px-1.5 py-0.5 rounded mb-1 inline-block">RETRACTED — Excluded from analysis</span>
+                    )}
+                    <div>
+                      {url ? (
+                        <a href={url} target="_blank" rel="noopener noreferrer" className={`hover:underline font-medium ${isRetracted ? 'text-red-600 line-through' : 'text-indigo-600 hover:text-indigo-800'}`}>
+                          {title}
+                        </a>
+                      ) : (
+                        <span className={`font-medium ${isRetracted ? 'text-red-600 line-through' : 'text-gray-800'}`}>{title}</span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                      {source && <span className="text-xs text-gray-400 italic">{source}</span>}
+                      {year && <span className="text-xs text-gray-400">{year}</span>}
+                      {tierBadge && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${tierBadge.cls}`}>{tierBadge.label}</span>
+                      )}
+                      {citationCount > 0 && (
+                        <span className="text-[10px] text-gray-400">Cited {citationCount} times</span>
+                      )}
+                      {isOa && oaUrl && (
+                        <a href={oaUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-green-600 hover:underline">Open Access</a>
+                      )}
+                      {doi && (
+                        <a href={`https://doi.org/${doi}`} target="_blank" rel="noopener noreferrer" className="text-[10px] text-indigo-500 hover:underline">
+                          DOI
+                        </a>
+                      )}
+                      {pmid && (
+                        <a href={`https://pubmed.ncbi.nlm.nih.gov/${pmid}/`} target="_blank" rel="noopener noreferrer" className="text-[10px] text-green-600 hover:underline">
+                          PubMed
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Literature Deep-Dive (collapsible) */}
+      {hasStorm && (
+        <div className="rounded-lg border border-gray-200 mb-2">
+          <button
+            onClick={() => setShowDeepDive(!showDeepDive)}
+            className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-gray-50/50 transition-colors"
+          >
+            <span className="w-7 h-7 rounded-lg bg-purple-500 text-white flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+              </svg>
+            </span>
+            <div className="flex-1">
+              <span className="text-sm font-bold text-gray-900">Literature Deep-Dive</span>
+              <span className="text-xs text-gray-400 ml-2">STORM-generated literature synthesis</span>
+            </div>
+            <svg className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${showDeepDive ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+          {showDeepDive && (
+            <div className="px-4 pb-4 ml-10 prose prose-sm max-w-none prose-headings:text-gray-900 prose-headings:font-bold prose-headings:mt-4 prose-headings:mb-1.5 prose-p:text-gray-700 prose-p:leading-relaxed prose-p:mb-2 prose-li:text-gray-700">
+              <FormattedMarkdown content={result.storm_article} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Full AI Reasoning (collapsible) */}
+      {hasP1 && (
+        <div className="rounded-lg border border-gray-200">
+          <button
+            onClick={() => setShowFullReasoning(!showFullReasoning)}
+            className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-gray-50/50 transition-colors"
+          >
+            <span className="w-7 h-7 rounded-lg bg-slate-500 text-white flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+              </svg>
+            </span>
+            <div className="flex-1">
+              <span className="text-sm font-bold text-gray-900">Full AI Reasoning</span>
+              <span className="text-xs text-gray-400 ml-2">Complete differential before KG verification</span>
+            </div>
+            <svg className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${showFullReasoning ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+          {showFullReasoning && (
+            <div className="px-4 pb-4 ml-10 prose prose-sm max-w-none prose-headings:text-gray-900 prose-headings:font-bold prose-headings:mt-4 prose-headings:mb-1.5 prose-p:text-gray-700 prose-p:leading-relaxed prose-p:mb-2 prose-li:text-gray-700">
+              <FormattedMarkdown content={result.p1_differential} />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
