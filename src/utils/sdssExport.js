@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, HeadingLevel, AlignmentType } from 'docx';
 import { saveAs } from 'file-saver';
+import { renderEventItem, extractVerdict, extractKnowledgeGaps, extractRecommendations, PRIORITY_COLORS } from './reportHelpers';
 
 // ── Helpers ─────────────────────────────────────────────────────
 
@@ -189,7 +190,7 @@ export function exportSdssPDF(result, mode = 'standard') {
     y += 5;
     result.temporal_events.forEach(evt => {
       checkPage(5);
-      bodyText(`- ${typeof evt === 'string' ? evt : JSON.stringify(evt)}`, 4);
+      bodyText(`- ${renderEventItem(evt)}`, 4);
     });
     y += 2;
   }
@@ -202,8 +203,32 @@ export function exportSdssPDF(result, mode = 'standard') {
     doc.setTextColor(100, 100, 100);
     doc.text('INVESTIGATIONS', margin, y);
     y += 5;
-    bodyText(result.investigations_performed.map(inv => typeof inv === 'string' ? inv : JSON.stringify(inv)).join('  |  '), 4);
+    bodyText(result.investigations_performed.map(inv => renderEventItem(inv)).join('  |  '), 4);
     y += 2;
+  }
+
+  // ── Executive Verdict ──
+  const verdict = extractVerdict(result);
+  if (verdict) {
+    checkPage(20);
+    const verdictColors = { critical: [220, 38, 38], caution: [217, 119, 6], reassuring: [22, 163, 74] };
+    const verdictBg = { critical: [254, 226, 226], caution: [254, 243, 199], reassuring: [220, 252, 231] };
+    const vc = verdictColors[verdict.level] || verdictColors.caution;
+    const vb = verdictBg[verdict.level] || verdictBg.caution;
+    doc.setFillColor(...vb);
+    doc.setDrawColor(...vc);
+    doc.setLineWidth(0.8);
+    const verdictText = `EXECUTIVE VERDICT: ${verdict.text}`;
+    const verdictLines = doc.splitTextToSize(verdictText, contentW - 14);
+    const rectH = 10 + verdictLines.length * 5;
+    doc.roundedRect(margin, y, contentW, rectH, 2, 2, 'FD');
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...vc);
+    verdictLines.forEach((line, li) => {
+      doc.text(line, margin + 7, y + 7 + li * 5);
+    });
+    y += rectH + 6;
   }
 
   // ── Critical Alert ──
@@ -238,14 +263,14 @@ export function exportSdssPDF(result, mode = 'standard') {
     y += 4;
   }
 
-  // ── Clinical Analysis (synthesis) ──
-  if (result.synthesis) {
-    sectionTitle('Clinical Analysis');
-    const synLines = stripMarkdown(result.synthesis).split('\n').filter(Boolean);
-    synLines.forEach(line => {
+  // ── SECTION A — MedGemma Clinical Analysis ──
+  const p1Text = result.p1_clean || result.p1_differential;
+  if (p1Text) {
+    sectionTitle('Section A — MedGemma Clinical Analysis');
+    const p1Lines = stripMarkdown(p1Text).split('\n').filter(Boolean);
+    p1Lines.forEach(line => {
       const trimmed = line.trim();
       if (!trimmed) return;
-      // Detect sub-headings (lines that are all caps or numbered)
       const isSubHeading = /^\d+\.\s+[A-Z]/.test(trimmed) || (trimmed === trimmed.toUpperCase() && trimmed.length < 80 && trimmed.length > 3);
       if (isSubHeading) {
         checkPage(10);
@@ -262,14 +287,14 @@ export function exportSdssPDF(result, mode = 'standard') {
     y += 4;
   }
 
-  // ── Differential Diagnosis ──
+  // ── SECTION B — Knowledge Graph Verification ──
   if (dxList.length > 0) {
-    sectionTitle('Differential Diagnosis');
+    sectionTitle('Section B — Knowledge Graph Verification');
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'italic');
     doc.setTextColor(120, 120, 120);
-    doc.text('Ranked by likelihood given the full clinical picture:', margin, y);
+    doc.text('Each hypothesis verified against PrimeKG knowledge graph:', margin, y);
     y += 6;
 
     dxList.forEach((dx, i) => {
@@ -289,24 +314,28 @@ export function exportSdssPDF(result, mode = 'standard') {
       doc.setTextColor(30, 30, 30);
       doc.text(dx.diagnosis || '', margin + 12, y + 1);
 
-      // Likelihood badge
-      const likeText = dx.likelihood?.replace('-', ' ') || '';
-      if (likeText) {
+      // KG support badge
+      const supportText = dx.kg_support || '';
+      if (supportText) {
         const badgeX = margin + 12 + doc.getTextWidth(dx.diagnosis || '') + 4;
         doc.setFontSize(8);
         doc.setFont('helvetica', 'bold');
-        const likeColor = dx.likelihood === 'high' ? [22, 163, 74] : dx.likelihood === 'must-exclude' ? [220, 38, 38] : dx.likelihood === 'moderate' ? [217, 119, 6] : [107, 114, 128];
-        doc.setTextColor(...likeColor);
-        doc.text(`[${likeText}]`, badgeX, y + 1);
+        const supportColor = supportText.includes('Strongly') ? [22, 163, 74] : supportText.includes('Partially') ? [217, 119, 6] : supportText.includes('Questioned') ? [220, 38, 38] : [107, 114, 128];
+        doc.setTextColor(...supportColor);
+        doc.text(`[${supportText}]`, badgeX, y + 1);
       }
       y += 8;
 
-      // Supporting/against counts
-      if (dx.true_count != null) {
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(120, 120, 120);
-        doc.text(`Confidence: ${dx.kg_score != null ? (dx.kg_score * 100).toFixed(0) + '%' : '-'}  |  ${dx.true_count} supporting  /  ${dx.false_count || 0} against`, margin + 12, y);
+      // KG score + counts
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(120, 120, 120);
+      const scoreParts = [];
+      if (dx.kg_score != null) scoreParts.push(`KG Score: ${(dx.kg_score * 100).toFixed(0)}%`);
+      if (dx.likelihood) scoreParts.push(`Likelihood: ${dx.likelihood.replace('-', ' ')}`);
+      if (dx.true_count != null) scoreParts.push(`${dx.true_count} supporting / ${dx.false_count || 0} against`);
+      if (scoreParts.length > 0) {
+        doc.text(scoreParts.join('  |  '), margin + 12, y);
         y += 5;
       }
 
@@ -322,52 +351,106 @@ export function exportSdssPDF(result, mode = 'standard') {
         });
       }
 
-      // Supporting evidence bullets
-      const verified = dx.triplets?.filter(t => isVerified(t.answer)) || [];
-      const refuted = dx.triplets?.filter(t => isRefuted(t.answer)) || [];
-
-      if (verified.length > 0) {
-        checkPage(8);
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(22, 163, 74);
-        doc.text(`Supporting Evidence (${verified.length}):`, margin + 12, y);
-        y += 4;
-        verified.slice(0, 5).forEach(t => {
-          checkPage(5);
-          doc.setFont('helvetica', 'normal');
-          doc.setTextColor(60, 60, 60);
-          doc.setFontSize(8);
-          const text = `+ ${t.head} ${t.relation?.replace(/_/g, ' ')} ${t.tail}`;
-          doc.text(text, margin + 16, y);
-          y += 3.5;
+      // Triplets table
+      const triplets = dx.triplets || [];
+      if (triplets.length > 0) {
+        checkPage(12);
+        autoTable(doc, {
+          startY: y,
+          margin: { left: margin + 12, right: margin },
+          head: [['Subject', 'Relation', 'Object', 'Verdict', 'Confidence']],
+          body: triplets.map(t => [
+            t.head || '',
+            (t.relation || '').replace(/_/g, ' '),
+            t.tail || '',
+            isVerified(t.answer) ? 'Verified' : isRefuted(t.answer) ? 'Refuted' : String(t.answer || 'Unknown'),
+            t.confidence || '',
+          ]),
+          styles: { fontSize: 7, cellPadding: 1.5 },
+          headStyles: { fillColor: [55, 48, 163], textColor: 255, fontStyle: 'bold', fontSize: 7 },
+          bodyStyles: { textColor: [40, 40, 40] },
+          alternateRowStyles: { fillColor: [248, 248, 255] },
+          didParseCell: (data) => {
+            if (data.section === 'body' && data.column.index === 3) {
+              const val = data.cell.text[0] || '';
+              if (val === 'Verified') data.cell.styles.textColor = [22, 163, 74];
+              else if (val === 'Refuted') data.cell.styles.textColor = [220, 38, 38];
+            }
+          },
         });
-        if (verified.length > 5) {
-          doc.setTextColor(120, 120, 120);
-          doc.text(`... and ${verified.length - 5} more`, margin + 16, y);
-          y += 3.5;
-        }
+        y = doc.lastAutoTable.finalY + 6;
       }
 
-      if (refuted.length > 0) {
-        checkPage(8);
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(220, 38, 38);
-        doc.text(`Against (${refuted.length}):`, margin + 12, y);
-        y += 4;
-        refuted.slice(0, 3).forEach(t => {
-          checkPage(5);
-          doc.setFont('helvetica', 'normal');
-          doc.setTextColor(60, 60, 60);
-          doc.setFontSize(8);
-          doc.text(`- ${t.head} ${t.relation?.replace(/_/g, ' ')} ${t.tail}`, margin + 16, y);
-          y += 3.5;
-        });
-      }
-
-      y += 5;
+      y += 4;
     });
+  }
+
+  // ── Knowledge Gaps ──
+  const gaps = extractKnowledgeGaps(result);
+  if (gaps.length > 0) {
+    sectionTitle('Knowledge Gaps');
+    autoTable(doc, {
+      startY: y,
+      margin: { left: margin, right: margin },
+      head: [['Gap', 'Clinical Implication']],
+      body: gaps.map(g => [g.gap, g.implication || '—']),
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [55, 48, 163], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+      bodyStyles: { textColor: [40, 40, 40] },
+      alternateRowStyles: { fillColor: [248, 248, 255] },
+      columnStyles: { 0: { cellWidth: contentW * 0.4 }, 1: { cellWidth: contentW * 0.6, fontStyle: 'italic' } },
+    });
+    y = doc.lastAutoTable.finalY + 6;
+  }
+
+  // ── Clinical Recommendations ──
+  const recs = extractRecommendations(result);
+  if (recs.length > 0) {
+    sectionTitle('Clinical Recommendations');
+    autoTable(doc, {
+      startY: y,
+      margin: { left: margin, right: margin },
+      head: [['#', 'Priority', 'Action']],
+      body: recs.map((r, i) => [String(i + 1), r.priority, r.action]),
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [55, 48, 163], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+      bodyStyles: { textColor: [40, 40, 40] },
+      alternateRowStyles: { fillColor: [248, 248, 255] },
+      columnStyles: { 0: { cellWidth: 10, halign: 'center' }, 1: { cellWidth: 25, fontStyle: 'bold' } },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.column.index === 1) {
+          const val = data.cell.text[0] || '';
+          if (val === 'IMMEDIATE') data.cell.styles.textColor = [220, 38, 38];
+          else if (val === 'HIGH') data.cell.styles.textColor = [234, 88, 12];
+          else if (val === 'MODERATE') data.cell.styles.textColor = [37, 99, 235];
+          else data.cell.styles.textColor = [107, 114, 128];
+        }
+      },
+    });
+    y = doc.lastAutoTable.finalY + 6;
+  }
+
+  // ── SECTION C — Synthesised Second Opinion ──
+  if (result.synthesis) {
+    sectionTitle('Section C — Synthesised Second Opinion');
+    const synLines = stripMarkdown(result.synthesis).split('\n').filter(Boolean);
+    synLines.forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+      const isSubHeading = /^\d+\.\s+[A-Z]/.test(trimmed) || (trimmed === trimmed.toUpperCase() && trimmed.length < 80 && trimmed.length > 3);
+      if (isSubHeading) {
+        checkPage(10);
+        y += 2;
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(40, 40, 40);
+        doc.text(trimmed, margin, y);
+        y += 6;
+      } else {
+        bodyText(trimmed);
+      }
+    });
+    y += 4;
   }
 
   // ── References ──
@@ -397,16 +480,11 @@ export function exportSdssPDF(result, mode = 'standard') {
     });
   }
 
-  // ── Deep-dive & P1 (if present) ──
+  // ── Literature Deep-Dive (if present) ──
   if (result.storm_article) {
     sectionTitle('Literature Deep-Dive');
     bodyText(stripMarkdown(result.storm_article));
     y += 4;
-  }
-
-  if (result.p1_differential) {
-    sectionTitle('Full AI Reasoning');
-    bodyText(stripMarkdown(result.p1_differential));
   }
 
   // Add headers/footers to all pages
@@ -462,7 +540,7 @@ export async function exportSdssDOCX(result, mode = 'standard') {
   if (result.temporal_events?.length > 0) {
     children.push(new Paragraph({ children: [new TextRun({ text: 'CLINICAL TIMELINE', bold: true, size: 18, color: '6B7280' })], spacing: { before: 100, after: 60 } }));
     result.temporal_events.forEach(evt => {
-      children.push(new Paragraph({ children: [new TextRun({ text: `- ${typeof evt === 'string' ? evt : JSON.stringify(evt)}`, size: 20 })], spacing: { after: 30 } }));
+      children.push(new Paragraph({ children: [new TextRun({ text: `- ${renderEventItem(evt)}`, size: 20 })], spacing: { after: 30 } }));
     });
   }
 
@@ -470,8 +548,23 @@ export async function exportSdssDOCX(result, mode = 'standard') {
     children.push(new Paragraph({
       children: [
         new TextRun({ text: 'INVESTIGATIONS    ', bold: true, size: 18, color: '6B7280' }),
-        new TextRun({ text: result.investigations_performed.map(inv => typeof inv === 'string' ? inv : JSON.stringify(inv)).join('  |  '), size: 20 }),
+        new TextRun({ text: result.investigations_performed.map(inv => renderEventItem(inv)).join('  |  '), size: 20 }),
       ],
+      spacing: { before: 100, after: 100 },
+    }));
+  }
+
+  // ── Executive Verdict (DOCX) ──
+  const verdictDocx = extractVerdict(result);
+  if (verdictDocx) {
+    const verdictColorMap = { critical: 'DC2626', caution: 'D97706', reassuring: '16A34A' };
+    const verdictBgMap = { critical: 'FEE2E2', caution: 'FEF3C7', reassuring: 'DCFCE7' };
+    children.push(new Paragraph({
+      children: [
+        new TextRun({ text: `EXECUTIVE VERDICT: `, bold: true, size: 24, color: verdictColorMap[verdictDocx.level] || 'D97706' }),
+        new TextRun({ text: verdictDocx.text, bold: true, size: 24, color: verdictColorMap[verdictDocx.level] || 'D97706' }),
+      ],
+      shading: { type: 'clear', fill: verdictBgMap[verdictDocx.level] || 'FEF3C7' },
       spacing: { before: 100, after: 100 },
     }));
   }
@@ -492,10 +585,11 @@ export async function exportSdssDOCX(result, mode = 'standard') {
     children.push(new Paragraph({ children: [], spacing: { after: 100 } }));
   }
 
-  // ── Clinical Analysis ──
-  if (result.synthesis) {
-    children.push(new Paragraph({ children: [new TextRun({ text: 'Clinical Analysis', bold: true, size: 26 })], heading: HeadingLevel.HEADING_1, spacing: { before: 200, after: 100 } }));
-    stripMarkdown(result.synthesis).split('\n').filter(Boolean).forEach(line => {
+  // ── SECTION A — MedGemma Clinical Analysis ──
+  const p1Text = result.p1_clean || result.p1_differential;
+  if (p1Text) {
+    children.push(new Paragraph({ children: [new TextRun({ text: 'Section A — MedGemma Clinical Analysis', bold: true, size: 26 })], heading: HeadingLevel.HEADING_1, spacing: { before: 200, after: 100 } }));
+    stripMarkdown(p1Text).split('\n').filter(Boolean).forEach(line => {
       const trimmed = line.trim();
       if (!trimmed) return;
       const isSubHeading = /^\d+\.\s+[A-Z]/.test(trimmed) || (trimmed === trimmed.toUpperCase() && trimmed.length < 80 && trimmed.length > 3);
@@ -506,28 +600,34 @@ export async function exportSdssDOCX(result, mode = 'standard') {
     });
   }
 
-  // ── Differential ──
+  // ── SECTION B — Knowledge Graph Verification ──
   if (dxList.length > 0) {
-    children.push(new Paragraph({ children: [new TextRun({ text: 'Differential Diagnosis', bold: true, size: 26 })], heading: HeadingLevel.HEADING_1, spacing: { before: 200, after: 60 } }));
-    children.push(new Paragraph({ children: [new TextRun({ text: 'Ranked by likelihood given the full clinical picture:', italics: true, size: 18, color: '6B7280' })], spacing: { after: 100 } }));
+    children.push(new Paragraph({ children: [new TextRun({ text: 'Section B — Knowledge Graph Verification', bold: true, size: 26 })], heading: HeadingLevel.HEADING_1, spacing: { before: 200, after: 60 } }));
+    children.push(new Paragraph({ children: [new TextRun({ text: 'Each hypothesis verified against PrimeKG knowledge graph:', italics: true, size: 18, color: '6B7280' })], spacing: { after: 100 } }));
 
     dxList.forEach((dx, i) => {
       const isCritical = dx.critical_flags?.length > 0;
-      const likeColor = dx.likelihood === 'high' ? '16A34A' : dx.likelihood === 'must-exclude' ? 'DC2626' : dx.likelihood === 'moderate' ? 'D97706' : '6B7280';
+      const supportText = dx.kg_support || '';
+      const supportColor = supportText.includes('Strongly') ? '16A34A' : supportText.includes('Partially') ? 'D97706' : supportText.includes('Questioned') ? 'DC2626' : '6B7280';
 
       children.push(new Paragraph({
         children: [
           new TextRun({ text: `${i + 1}  `, bold: true, size: 24, color: '3730A3' }),
           new TextRun({ text: dx.diagnosis || '', bold: true, size: 24 }),
-          new TextRun({ text: `  [${dx.likelihood?.replace('-', ' ') || ''}]`, bold: true, size: 18, color: likeColor }),
+          ...(supportText ? [new TextRun({ text: `  [${supportText}]`, bold: true, size: 18, color: supportColor })] : []),
           ...(isCritical ? [new TextRun({ text: '  CRITICAL', bold: true, size: 16, color: 'DC2626' })] : []),
         ],
         spacing: { before: 120, after: 40 },
       }));
 
-      if (dx.true_count != null) {
+      // KG score + counts
+      const metaParts = [];
+      if (dx.kg_score != null) metaParts.push(`KG Score: ${(dx.kg_score * 100).toFixed(0)}%`);
+      if (dx.likelihood) metaParts.push(`Likelihood: ${dx.likelihood.replace('-', ' ')}`);
+      if (dx.true_count != null) metaParts.push(`${dx.true_count} supporting / ${dx.false_count || 0} against`);
+      if (metaParts.length > 0) {
         children.push(new Paragraph({
-          children: [new TextRun({ text: `Confidence: ${dx.kg_score != null ? (dx.kg_score * 100).toFixed(0) + '%' : '-'}  |  ${dx.true_count} supporting  /  ${dx.false_count || 0} against`, size: 16, color: '9CA3AF' })],
+          children: [new TextRun({ text: metaParts.join('  |  '), size: 16, color: '9CA3AF' })],
           spacing: { after: 40 },
         }));
       }
@@ -538,23 +638,104 @@ export async function exportSdssDOCX(result, mode = 'standard') {
         });
       }
 
-      // Evidence
-      const verified = dx.triplets?.filter(t => isVerified(t.answer)) || [];
-      const refuted = dx.triplets?.filter(t => isRefuted(t.answer)) || [];
-
-      if (verified.length > 0) {
-        children.push(new Paragraph({ children: [new TextRun({ text: `Supporting Evidence (${verified.length}):`, bold: true, size: 16, color: '16A34A' })], spacing: { before: 40, after: 20 } }));
-        verified.slice(0, 5).forEach(t => {
-          children.push(new Paragraph({ children: [new TextRun({ text: `+ ${t.head} ${t.relation?.replace(/_/g, ' ')} ${t.tail}`, size: 16 })], spacing: { after: 10 } }));
+      // Triplets table
+      const triplets = dx.triplets || [];
+      if (triplets.length > 0) {
+        const headerRow = new TableRow({
+          tableHeader: true,
+          children: ['Subject', 'Relation', 'Object', 'Verdict', 'Confidence'].map(h =>
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: h, bold: true, size: 16, color: 'FFFFFF' })], alignment: AlignmentType.LEFT })],
+              shading: { type: 'clear', fill: '3730A3' },
+              width: { size: 20, type: WidthType.PERCENTAGE },
+            })
+          ),
         });
-      }
 
-      if (refuted.length > 0) {
-        children.push(new Paragraph({ children: [new TextRun({ text: `Against (${refuted.length}):`, bold: true, size: 16, color: 'DC2626' })], spacing: { before: 40, after: 20 } }));
-        refuted.slice(0, 3).forEach(t => {
-          children.push(new Paragraph({ children: [new TextRun({ text: `- ${t.head} ${t.relation?.replace(/_/g, ' ')} ${t.tail}`, size: 16 })], spacing: { after: 10 } }));
+        const dataRows = triplets.map(t => {
+          const verdict = isVerified(t.answer) ? 'Verified' : isRefuted(t.answer) ? 'Refuted' : String(t.answer || 'Unknown');
+          const verdictColor = verdict === 'Verified' ? '16A34A' : verdict === 'Refuted' ? 'DC2626' : '6B7280';
+          return new TableRow({
+            children: [
+              t.head || '', (t.relation || '').replace(/_/g, ' '), t.tail || '', verdict, t.confidence || '',
+            ].map((val, ci) =>
+              new TableCell({
+                children: [new Paragraph({ children: [new TextRun({ text: val, size: 15, color: ci === 3 ? verdictColor : '1F2937' })] })],
+                width: { size: 20, type: WidthType.PERCENTAGE },
+              })
+            ),
+          });
         });
+
+        children.push(new Table({ rows: [headerRow, ...dataRows], width: { size: 100, type: WidthType.PERCENTAGE } }));
+        children.push(new Paragraph({ children: [], spacing: { after: 60 } }));
       }
+    });
+  }
+
+  // ── Knowledge Gaps (DOCX) ──
+  const gapsDocx = extractKnowledgeGaps(result);
+  if (gapsDocx.length > 0) {
+    children.push(new Paragraph({ children: [new TextRun({ text: 'Knowledge Gaps', bold: true, size: 26 })], heading: HeadingLevel.HEADING_1, spacing: { before: 200, after: 60 } }));
+    const gapHeaderRow = new TableRow({
+      tableHeader: true,
+      children: ['Gap', 'Clinical Implication'].map(h =>
+        new TableCell({
+          children: [new Paragraph({ children: [new TextRun({ text: h, bold: true, size: 16, color: 'FFFFFF' })] })],
+          shading: { type: 'clear', fill: '3730A3' },
+          width: { size: 50, type: WidthType.PERCENTAGE },
+        })
+      ),
+    });
+    const gapDataRows = gapsDocx.map(g => new TableRow({
+      children: [g.gap, g.implication || '—'].map(val =>
+        new TableCell({
+          children: [new Paragraph({ children: [new TextRun({ text: val, size: 18 })] })],
+          width: { size: 50, type: WidthType.PERCENTAGE },
+        })
+      ),
+    }));
+    children.push(new Table({ rows: [gapHeaderRow, ...gapDataRows], width: { size: 100, type: WidthType.PERCENTAGE } }));
+    children.push(new Paragraph({ children: [], spacing: { after: 60 } }));
+  }
+
+  // ── Clinical Recommendations (DOCX) ──
+  const recsDocx = extractRecommendations(result);
+  if (recsDocx.length > 0) {
+    children.push(new Paragraph({ children: [new TextRun({ text: 'Clinical Recommendations', bold: true, size: 26 })], heading: HeadingLevel.HEADING_1, spacing: { before: 200, after: 60 } }));
+    const recHeaderRow = new TableRow({
+      tableHeader: true,
+      children: ['#', 'Priority', 'Action'].map((h, hi) =>
+        new TableCell({
+          children: [new Paragraph({ children: [new TextRun({ text: h, bold: true, size: 16, color: 'FFFFFF' })] })],
+          shading: { type: 'clear', fill: '3730A3' },
+          width: { size: hi === 0 ? 8 : hi === 1 ? 17 : 75, type: WidthType.PERCENTAGE },
+        })
+      ),
+    });
+    const priorityDocxColor = { IMMEDIATE: 'DC2626', HIGH: 'EA580C', MODERATE: '2563EB', MONITOR: '6B7280' };
+    const recDataRows = recsDocx.map((r, i) => new TableRow({
+      children: [
+        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: String(i + 1), size: 18 })] })], width: { size: 8, type: WidthType.PERCENTAGE } }),
+        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: r.priority, bold: true, size: 16, color: priorityDocxColor[r.priority] || '6B7280' })] })], width: { size: 17, type: WidthType.PERCENTAGE } }),
+        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: r.action, size: 18 })] })], width: { size: 75, type: WidthType.PERCENTAGE } }),
+      ],
+    }));
+    children.push(new Table({ rows: [recHeaderRow, ...recDataRows], width: { size: 100, type: WidthType.PERCENTAGE } }));
+    children.push(new Paragraph({ children: [], spacing: { after: 60 } }));
+  }
+
+  // ── SECTION C — Synthesised Second Opinion ──
+  if (result.synthesis) {
+    children.push(new Paragraph({ children: [new TextRun({ text: 'Section C — Synthesised Second Opinion', bold: true, size: 26 })], heading: HeadingLevel.HEADING_1, spacing: { before: 200, after: 100 } }));
+    stripMarkdown(result.synthesis).split('\n').filter(Boolean).forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+      const isSubHeading = /^\d+\.\s+[A-Z]/.test(trimmed) || (trimmed === trimmed.toUpperCase() && trimmed.length < 80 && trimmed.length > 3);
+      children.push(new Paragraph({
+        children: [new TextRun({ text: trimmed, bold: isSubHeading, size: isSubHeading ? 22 : 20 })],
+        spacing: { before: isSubHeading ? 120 : 0, after: isSubHeading ? 60 : 60 },
+      }));
     });
   }
 
@@ -574,17 +755,10 @@ export async function exportSdssDOCX(result, mode = 'standard') {
     });
   }
 
-  // ── Deep-dive & P1 ──
+  // ── Literature Deep-Dive ──
   if (result.storm_article) {
     children.push(new Paragraph({ children: [new TextRun({ text: 'Literature Deep-Dive', bold: true, size: 26 })], heading: HeadingLevel.HEADING_1, spacing: { before: 200, after: 60 } }));
     stripMarkdown(result.storm_article).split('\n').filter(Boolean).forEach(line => {
-      children.push(new Paragraph({ children: [new TextRun({ text: line.trim(), size: 20 })], spacing: { after: 60 } }));
-    });
-  }
-
-  if (result.p1_differential) {
-    children.push(new Paragraph({ children: [new TextRun({ text: 'Full AI Reasoning', bold: true, size: 26 })], heading: HeadingLevel.HEADING_1, spacing: { before: 200, after: 60 } }));
-    stripMarkdown(result.p1_differential).split('\n').filter(Boolean).forEach(line => {
       children.push(new Paragraph({ children: [new TextRun({ text: line.trim(), size: 20 })], spacing: { after: 60 } }));
     });
   }
@@ -701,7 +875,7 @@ export function exportSdssHTML(result, mode = 'standard') {
     if (result.temporal_events?.length > 0) {
       html += `<div style="margin-top:16px"><div class="kv-label" style="margin-bottom:8px">Clinical Timeline</div>`;
       result.temporal_events.forEach(evt => {
-        html += `<div class="timeline-item"><div class="timeline-dot"></div><div>${typeof evt === 'string' ? evt : JSON.stringify(evt)}</div></div>`;
+        html += `<div class="timeline-item"><div class="timeline-dot"></div><div>${renderEventItem(evt)}</div></div>`;
       });
       html += `</div>`;
     }
@@ -709,11 +883,22 @@ export function exportSdssHTML(result, mode = 'standard') {
     if (result.investigations_performed?.length > 0) {
       html += `<div style="margin-top:16px"><div class="kv-label" style="margin-bottom:8px">Investigations</div><div>`;
       result.investigations_performed.forEach(inv => {
-        html += `<span class="inv-tag">${typeof inv === 'string' ? inv : JSON.stringify(inv)}</span>`;
+        html += `<span class="inv-tag">${renderEventItem(inv)}</span>`;
       });
       html += `</div></div>`;
     }
     html += `</div>`;
+  }
+
+  // Executive Verdict (HTML)
+  const verdictHtml = extractVerdict(result);
+  if (verdictHtml) {
+    const vColorMap = { critical: '#dc2626', caution: '#d97706', reassuring: '#16a34a' };
+    const vBgMap = { critical: '#fef2f2', caution: '#fef3c7', reassuring: '#dcfce7' };
+    html += `<div class="section"><div style="background:${vBgMap[verdictHtml.level] || vBgMap.caution};border:2px solid ${vColorMap[verdictHtml.level] || vColorMap.caution};border-radius:12px;padding:20px">`;
+    html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${vColorMap[verdictHtml.level] || vColorMap.caution};opacity:0.8">Executive Verdict</div>`;
+    html += `<div style="font-size:18px;font-weight:700;color:${vColorMap[verdictHtml.level] || vColorMap.caution};margin-top:6px">${verdictHtml.text}</div>`;
+    html += `</div></div>`;
   }
 
   // Critical Alert
@@ -726,50 +911,87 @@ export function exportSdssHTML(result, mode = 'standard') {
     html += `</div></div>`;
   }
 
-  // Clinical Analysis
-  if (result.synthesis) {
-    html += `<div class="section"><h2>Clinical Analysis</h2><div class="synthesis">${stripMarkdown(result.synthesis)}</div></div>`;
+  // SECTION A — MedGemma Clinical Analysis
+  const p1TextHtml = result.p1_clean || result.p1_differential;
+  if (p1TextHtml) {
+    html += `<div class="section"><h2>Section A — MedGemma Clinical Analysis</h2><div class="synthesis">${stripMarkdown(p1TextHtml)}</div></div>`;
   }
 
-  // Differential
+  // SECTION B — Knowledge Graph Verification
   if (dxList.length > 0) {
-    html += `<div class="section"><h2>Differential Diagnosis</h2><p style="font-size:12px;color:#6b7280;margin-bottom:16px;font-style:italic">Ranked by likelihood given the full clinical picture</p>`;
+    html += `<div class="section"><h2>Section B — Knowledge Graph Verification</h2><p style="font-size:12px;color:#6b7280;margin-bottom:16px;font-style:italic">Each hypothesis verified against PrimeKG knowledge graph</p>`;
     dxList.forEach((dx, i) => {
       const isCritical = dx.critical_flags?.length > 0;
-      const cardClass = isCritical ? 'critical' : (dx.likelihood || '');
+      const supportText = dx.kg_support || '';
+      const supportClass = supportText.includes('Strongly') ? 'high' : supportText.includes('Partially') ? 'moderate' : supportText.includes('Questioned') ? 'critical' : '';
+      const cardClass = isCritical ? 'critical' : supportClass;
       html += `<div class="dx-card ${cardClass}"><div class="dx-header">`;
       html += `<div class="dx-rank ${isCritical ? 'critical' : ''}">${i + 1}</div>`;
-      html += `<div><div class="dx-name">${dx.diagnosis} <span class="badge ${dx.likelihood || ''}">${dx.likelihood?.replace('-', ' ') || ''}</span>`;
+      html += `<div><div class="dx-name">${dx.diagnosis}`;
+      if (supportText) {
+        const badgeClass = supportText.includes('Strongly') ? 'high' : supportText.includes('Partially') ? 'moderate' : supportText.includes('Questioned') ? 'must-exclude' : 'low';
+        html += ` <span class="badge ${badgeClass}">${supportText}</span>`;
+      }
       if (isCritical) html += ` <span class="badge critical-flag">CRITICAL</span>`;
       html += `</div>`;
-      html += `<div class="dx-meta">Confidence: ${dx.kg_score != null ? (dx.kg_score * 100).toFixed(0) + '%' : '-'} &nbsp;|&nbsp; ${dx.true_count || 0} supporting / ${dx.false_count || 0} against</div>`;
+
+      const metaParts = [];
+      if (dx.kg_score != null) metaParts.push(`KG Score: ${(dx.kg_score * 100).toFixed(0)}%`);
+      if (dx.likelihood) metaParts.push(`Likelihood: ${dx.likelihood.replace('-', ' ')}`);
+      if (dx.true_count != null) metaParts.push(`${dx.true_count} supporting / ${dx.false_count || 0} against`);
+      html += `<div class="dx-meta">${metaParts.join(' &nbsp;|&nbsp; ')}</div>`;
 
       if (isCritical) {
         dx.critical_flags.forEach(flag => { html += `<p style="color:#dc2626;font-size:12px;font-weight:600;margin-top:4px">! ${flag}</p>`; });
       }
 
-      const verified = dx.triplets?.filter(t => isVerified(t.answer)) || [];
-      const refuted = dx.triplets?.filter(t => isRefuted(t.answer)) || [];
-
-      if (verified.length > 0) {
-        html += `<div class="evidence-group supporting"><h4>Supporting Evidence (${verified.length})</h4>`;
-        verified.slice(0, 5).forEach(t => {
-          html += `<div class="evidence-item supporting">+ ${t.head} <em style="color:#6b7280">${t.relation?.replace(/_/g, ' ')}</em> ${t.tail}</div>`;
+      // Triplets table
+      const triplets = dx.triplets || [];
+      if (triplets.length > 0) {
+        html += `<table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:12px">`;
+        html += `<thead><tr style="background:#3730a3;color:white"><th style="padding:6px 8px;text-align:left">Subject</th><th style="padding:6px 8px;text-align:left">Relation</th><th style="padding:6px 8px;text-align:left">Object</th><th style="padding:6px 8px;text-align:left">Verdict</th><th style="padding:6px 8px;text-align:left">Confidence</th></tr></thead><tbody>`;
+        triplets.forEach((t, ti) => {
+          const verdict = isVerified(t.answer) ? 'Verified' : isRefuted(t.answer) ? 'Refuted' : String(t.answer || 'Unknown');
+          const verdictColor = verdict === 'Verified' ? '#16a34a' : verdict === 'Refuted' ? '#dc2626' : '#6b7280';
+          const rowBg = ti % 2 === 0 ? '#ffffff' : '#f8f8ff';
+          html += `<tr style="background:${rowBg}"><td style="padding:4px 8px;border-bottom:1px solid #e5e7eb">${t.head || ''}</td><td style="padding:4px 8px;border-bottom:1px solid #e5e7eb"><em>${(t.relation || '').replace(/_/g, ' ')}</em></td><td style="padding:4px 8px;border-bottom:1px solid #e5e7eb">${t.tail || ''}</td><td style="padding:4px 8px;border-bottom:1px solid #e5e7eb;color:${verdictColor};font-weight:600">${verdict}</td><td style="padding:4px 8px;border-bottom:1px solid #e5e7eb">${t.confidence || ''}</td></tr>`;
         });
-        if (verified.length > 5) html += `<div style="font-size:11px;color:#9ca3af;margin-top:4px">... and ${verified.length - 5} more</div>`;
-        html += `</div>`;
-      }
-      if (refuted.length > 0) {
-        html += `<div class="evidence-group against"><h4>Against (${refuted.length})</h4>`;
-        refuted.slice(0, 3).forEach(t => {
-          html += `<div class="evidence-item against">- ${t.head} <em style="color:#6b7280">${t.relation?.replace(/_/g, ' ')}</em> ${t.tail}</div>`;
-        });
-        html += `</div>`;
+        html += `</tbody></table>`;
       }
 
       html += `</div></div></div>`;
     });
     html += `</div>`;
+  }
+
+  // Knowledge Gaps (HTML)
+  const gapsHtml = extractKnowledgeGaps(result);
+  if (gapsHtml.length > 0) {
+    html += `<div class="section"><h2>Knowledge Gaps</h2>`;
+    html += `<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:#3730a3;color:white"><th style="padding:8px 12px;text-align:left;width:45%">Gap</th><th style="padding:8px 12px;text-align:left;width:55%">Clinical Implication</th></tr></thead><tbody>`;
+    gapsHtml.forEach((g, i) => {
+      const bg = i % 2 === 0 ? '#fff' : '#f8f8ff';
+      html += `<tr style="background:${bg}"><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-weight:500">${g.gap}</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-style:italic">${g.implication || '—'}</td></tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+
+  // Clinical Recommendations (HTML)
+  const recsHtml = extractRecommendations(result);
+  if (recsHtml.length > 0) {
+    html += `<div class="section"><h2>Clinical Recommendations</h2>`;
+    html += `<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:#3730a3;color:white"><th style="padding:8px 8px;text-align:center;width:5%">#</th><th style="padding:8px 12px;text-align:left;width:15%">Priority</th><th style="padding:8px 12px;text-align:left;width:80%">Action</th></tr></thead><tbody>`;
+    recsHtml.forEach((r, i) => {
+      const bg = i % 2 === 0 ? '#fff' : '#f8f8ff';
+      const pc = PRIORITY_COLORS[r.priority] || PRIORITY_COLORS.MODERATE;
+      html += `<tr style="background:${bg}"><td style="padding:8px;text-align:center;border-bottom:1px solid #e5e7eb;font-weight:700;color:#9ca3af">${i + 1}</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb"><span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;background:${pc.hexBg};color:${pc.hex}">${r.priority}</span></td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${r.action}</td></tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+
+  // SECTION C — Synthesised Second Opinion
+  if (result.synthesis) {
+    html += `<div class="section"><h2>Section C — Synthesised Second Opinion</h2><div class="synthesis">${stripMarkdown(result.synthesis)}</div></div>`;
   }
 
   // References
@@ -788,12 +1010,9 @@ export function exportSdssHTML(result, mode = 'standard') {
     html += `</ol></div>`;
   }
 
-  // Deep-dive & P1
+  // Literature Deep-Dive
   if (result.storm_article) {
     html += `<div class="section"><h2>Literature Deep-Dive</h2><div class="synthesis">${stripMarkdown(result.storm_article)}</div></div>`;
-  }
-  if (result.p1_differential) {
-    html += `<div class="section"><h2>Full AI Reasoning</h2><div class="synthesis">${stripMarkdown(result.p1_differential)}</div></div>`;
   }
 
   html += `</div>

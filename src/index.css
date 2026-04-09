@@ -46,3 +46,12 @@
 .animate-slide-in-right {
   animation: slideInRight 0.3s ease forwards;
 }
+
+@keyframes pulseRed {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.animate-pulse-red {
+  animation: pulseRed 2s ease-in-out infinite;
+}

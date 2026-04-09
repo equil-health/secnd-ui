@@ -5,6 +5,7 @@ import useSdssPolling from '../hooks/useSdssPolling';
 import FormattedMarkdown from '../utils/formatReport';
 import UserBadge from '../components/UserBadge';
 import { exportSdssPDF, exportSdssDOCX, exportSdssHTML } from '../utils/sdssExport';
+import { renderEventItem, parseEventFields, extractVerdict, extractKnowledgeGaps, extractRecommendations, VERDICT_LEVELS, PRIORITY_COLORS } from '../utils/reportHelpers';
 
 // ── Pipeline stages ───────────────────────────────────────────
 const STAGES = [
@@ -553,12 +554,19 @@ function ClinicalReport({ result, mode, onReset, showFullReasoning, setShowFullR
               <div className="mt-4">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Clinical Timeline</p>
                 <div className="space-y-1.5">
-                  {result.temporal_events.map((evt, i) => (
-                    <div key={i} className="flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 flex-shrink-0" />
-                      <p className="text-sm text-gray-700">{typeof evt === 'string' ? evt : JSON.stringify(evt)}</p>
-                    </div>
-                  ))}
+                  {result.temporal_events.map((evt, i) => {
+                    const { primary, date, detail } = parseEventFields(evt);
+                    return (
+                      <div key={i} className="flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 flex-shrink-0" />
+                        <p className="text-sm text-gray-700">
+                          {date && <span className="text-xs font-mono text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded mr-1.5">{date}</span>}
+                          {primary}
+                          {detail && <span className="text-xs text-gray-500 italic ml-1"> — {detail}</span>}
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -570,7 +578,7 @@ function ClinicalReport({ result, mode, onReset, showFullReasoning, setShowFullR
                 <div className="flex flex-wrap gap-2">
                   {result.investigations_performed.map((inv, i) => (
                     <span key={i} className="px-2.5 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-md border border-gray-200">
-                      {typeof inv === 'string' ? inv : JSON.stringify(inv)}
+                      {renderEventItem(inv)}
                     </span>
                   ))}
                 </div>
@@ -579,58 +587,56 @@ function ClinicalReport({ result, mode, onReset, showFullReasoning, setShowFullR
           </div>
         )}
 
+        {/* ── Executive Verdict Banner ── */}
+        <ExecutiveVerdictBanner result={result} />
+
         {/* ── Critical Safety Alert (prominent, like reference PDF) ── */}
         {hasCritical && (
-          <div className="mx-6 mt-5 bg-red-50 border-2 border-red-300 rounded-xl p-5">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                </svg>
+          <div className="px-6 py-5 border-b border-gray-100">
+            <div className="bg-red-50 border-2 border-red-300 rounded-xl p-5">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                  <span className="w-3 h-3 rounded-full bg-red-600 animate-pulse-red" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-red-800 text-base">Critical Safety Alert</p>
+                  <p className="text-sm text-red-700 mt-1">
+                    One or more findings require immediate clinical attention.
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="font-bold text-red-800 text-base">Critical Safety Alert</p>
-                <p className="text-sm text-red-700 mt-1">
-                  One or more findings require immediate clinical attention.
-                </p>
-                {dxList.filter(dx => dx.critical_flags?.length > 0).map((dx, i) => (
-                  <div key={i} className="mt-2">
-                    <p className="text-sm font-semibold text-red-800">{dx.diagnosis}</p>
-                    {dx.critical_flags.map((flag, fi) => (
-                      <p key={fi} className="text-sm text-red-700 ml-4">- {flag}</p>
-                    ))}
-                  </div>
+              <div className="mt-4 space-y-3">
+                {dxList.filter(dx => dx.critical_flags?.length > 0).map((dx, di) => (
+                  dx.critical_flags.map((flag, fi) => {
+                    const colonIdx = flag.indexOf(':');
+                    const dashIdx = flag.indexOf(' — ');
+                    const splitIdx = colonIdx > 0 ? colonIdx : dashIdx > 0 ? dashIdx : -1;
+                    const flagTitle = splitIdx > 0 ? flag.slice(0, splitIdx).trim() : dx.diagnosis;
+                    const flagDetail = splitIdx > 0 ? flag.slice(splitIdx + (colonIdx > 0 ? 1 : 3)).trim() : flag;
+
+                    return (
+                      <div key={`${di}-${fi}`} className="bg-white/60 rounded-lg border-l-4 border-red-600 px-4 py-3">
+                        <p className="font-bold text-red-900 text-sm">{flagTitle}</p>
+                        <p className="text-red-700 text-sm mt-0.5">{flagDetail}</p>
+                      </div>
+                    );
+                  })
                 ))}
               </div>
             </div>
           </div>
         )}
 
-        {/* ── Section 2: Clinical Analysis (synthesis — the main doctor output) ── */}
-        {result.synthesis && (
-          <div className="px-6 py-5 border-b border-gray-100">
-            <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-              </svg>
-              Clinical Analysis
-            </h2>
-            <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-headings:font-bold prose-p:text-gray-700 prose-p:leading-relaxed prose-li:text-gray-700 prose-strong:text-gray-900">
-              <FormattedMarkdown content={result.synthesis} />
-            </div>
-          </div>
-        )}
-
-        {/* ── Section 3: Differential Diagnosis (numbered like reference PDF) ── */}
+        {/* ── Section 2: Differential Diagnosis (numbered like reference PDF) ── */}
         {dxList.length > 0 && (
           <div className="px-6 py-5 border-b border-gray-100">
-            <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2 pl-3 border-l-[3px] border-indigo-500">
               <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
               </svg>
-              Differential Diagnosis
+              PrimeKG-Verified Differential
             </h2>
-            <p className="text-xs text-gray-500 mb-4">Ranked by likelihood given the full clinical picture</p>
+            <p className="text-xs text-gray-500 mb-4">Each hypothesis verified against 12.9M PrimeKG relationships. Ranked by KG structural support.</p>
 
             <div className="space-y-4">
               {dxList.map((dx, i) => (
@@ -640,10 +646,31 @@ function ClinicalReport({ result, mode, onReset, showFullReasoning, setShowFullR
           </div>
         )}
 
-        {/* ── Section 4: References ── */}
+        {/* ── Knowledge Gaps ── */}
+        <KnowledgeGapsTable result={result} />
+
+        {/* ── Clinical Recommendations ── */}
+        <RecommendationsTable result={result} />
+
+        {/* ── Clinical Analysis (synthesis — full narrative, below scannable sections) ── */}
+        {result.synthesis && (
+          <div className="px-6 py-5 border-b border-gray-100">
+            <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2 pl-3 border-l-[3px] border-indigo-500">
+              <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+              </svg>
+              Clinical Analysis
+            </h2>
+            <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-headings:font-bold prose-headings:mt-6 prose-headings:mb-2 prose-p:text-gray-700 prose-p:leading-relaxed prose-p:mb-3 prose-li:text-gray-700 prose-strong:text-gray-900">
+              <FormattedMarkdown content={result.synthesis} />
+            </div>
+          </div>
+        )}
+
+        {/* ── References ── */}
         {result.references?.length > 0 && (
           <div className="px-6 py-5 border-b border-gray-100">
-            <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2 pl-3 border-l-[3px] border-indigo-500">
               <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
               </svg>
@@ -810,9 +837,15 @@ function DifferentialCard({ dx, rank }) {
               {dx.likelihood?.replace('-', ' ')}
             </span>
             {dx.kg_score != null && (
-              <span className="text-gray-500">
-                Confidence: {(dx.kg_score * 100).toFixed(0)}%
-              </span>
+              <div className="flex items-center gap-1.5">
+                <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${dx.kg_score >= 0.7 ? 'bg-green-500' : dx.kg_score >= 0.4 ? 'bg-amber-500' : 'bg-red-500'}`}
+                    style={{ width: `${(dx.kg_score * 100).toFixed(0)}%` }}
+                  />
+                </div>
+                <span className="font-semibold text-gray-600">{(dx.kg_score * 100).toFixed(0)}%</span>
+              </div>
             )}
             {dx.true_count != null && (
               <span className="text-gray-400">
@@ -894,6 +927,128 @@ function DifferentialCard({ dx, rank }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+//  EXECUTIVE VERDICT BANNER
+// ═══════════════════════════════════════════════════════════════
+
+function ExecutiveVerdictBanner({ result }) {
+  const verdict = extractVerdict(result);
+  if (!verdict) return null;
+
+  const levelStyle = VERDICT_LEVELS[verdict.level] || VERDICT_LEVELS.caution;
+  const topDx = (result.p2_differential || [])[0];
+  const supportNote = verdict.support || topDx?.kg_support || null;
+
+  return (
+    <div className="px-6 py-5 border-b border-gray-100">
+      <div className={`rounded-xl px-6 py-5 ${levelStyle.bg} ${levelStyle.border} border ${levelStyle.text}`}>
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+            <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest opacity-80">Executive Verdict</p>
+            <p className="text-lg font-bold mt-1 leading-snug">{verdict.text}</p>
+            {supportNote && (
+              <p className="text-sm opacity-80 mt-1.5">{supportNote} — PrimeKG verification</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+//  KNOWLEDGE GAPS TABLE
+// ═══════════════════════════════════════════════════════════════
+
+function KnowledgeGapsTable({ result }) {
+  const gaps = extractKnowledgeGaps(result);
+  if (gaps.length === 0) return null;
+
+  return (
+    <div className="px-6 py-5 border-b border-gray-100">
+      <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2 pl-3 border-l-[3px] border-indigo-500">
+        <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+        </svg>
+        Knowledge Gaps
+      </h2>
+      <div className="overflow-hidden rounded-lg border border-gray-200">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gray-50">
+              <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide w-1/2">Gap</th>
+              <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide w-1/2">Clinical Implication</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {gaps.map((gap, i) => (
+              <tr key={i} className={i % 2 === 1 ? 'bg-gray-50/50' : ''}>
+                <td className="px-4 py-3 text-gray-800 font-medium">{gap.gap}</td>
+                <td className="px-4 py-3 text-gray-600">{gap.implication || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+//  CLINICAL RECOMMENDATIONS TABLE
+// ═══════════════════════════════════════════════════════════════
+
+function RecommendationsTable({ result }) {
+  const recs = extractRecommendations(result);
+  if (recs.length === 0) return null;
+
+  return (
+    <div className="px-6 py-5 border-b border-gray-100">
+      <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2 pl-3 border-l-[3px] border-indigo-500">
+        <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15a2.25 2.25 0 012.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
+        </svg>
+        Clinical Recommendations
+      </h2>
+      <div className="overflow-hidden rounded-lg border border-gray-200">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gray-50">
+              <th className="w-10 px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase">#</th>
+              <th className="w-28 px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Priority</th>
+              <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Action</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {recs.map((rec, i) => {
+              const colors = PRIORITY_COLORS[rec.priority] || PRIORITY_COLORS.MODERATE;
+              return (
+                <tr key={i} className={i % 2 === 1 ? 'bg-gray-50/50' : ''}>
+                  <td className="px-3 py-3 text-center font-bold text-gray-400">{i + 1}</td>
+                  <td className="px-3 py-3">
+                    <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${colors.bg} ${colors.text}`}>
+                      {rec.priority}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-800">{rec.action}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
