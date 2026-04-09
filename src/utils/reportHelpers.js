@@ -183,6 +183,84 @@ export function stripExtractedSections(synthesis) {
 }
 
 
+// ── Synthesis section parser (splits into accordion sections) ────
+
+/**
+ * Section type config: icon hint, color, auto-expand state.
+ */
+const SECTION_STYLES = {
+  verdict:         { color: 'amber',  icon: 'shield',    autoExpand: true  },
+  safety:          { color: 'red',    icon: 'alert',     autoExpand: true  },
+  imaging:         { color: 'blue',   icon: 'scan',      autoExpand: false },
+  differential:    { color: 'indigo', icon: 'list',      autoExpand: false },
+  evidence:        { color: 'purple', icon: 'book',      autoExpand: false },
+  gaps:            { color: 'orange', icon: 'question',  autoExpand: false },
+  recommendations: { color: 'green',  icon: 'clipboard', autoExpand: false },
+  disclaimer:      { color: 'gray',   icon: 'info',      autoExpand: false },
+  default:         { color: 'slate',  icon: 'doc',       autoExpand: false },
+};
+
+function _classifySectionType(title) {
+  const t = title.toLowerCase();
+  if (t.includes('verdict'))         return 'verdict';
+  if (t.includes('safety') || t.includes('alert'))  return 'safety';
+  if (t.includes('imaging') || t.includes('radiolog'))  return 'imaging';
+  if (t.includes('differential'))    return 'differential';
+  if (t.includes('evidence'))        return 'evidence';
+  if (t.includes('gap'))             return 'gaps';
+  if (t.includes('recommend'))       return 'recommendations';
+  if (t.includes('disclaim'))        return 'disclaimer';
+  return 'default';
+}
+
+/**
+ * Parse synthesis markdown into structured sections for accordion rendering.
+ * Returns array of { number, title, body, type, style }.
+ * If no numbered sections are found, returns a single section with the full content.
+ */
+export function parseSynthesisSections(synthesis) {
+  if (!synthesis) return [];
+
+  // Match numbered section headings: "## 1. TITLE", "**1. TITLE**", "1. TITLE"
+  const sectionRegex = /(?:^|\n)\s*(?:#{1,3}\s+)?(?:\*\*\s*)?(\d+)\.\s+(.+?)(?:\*\*)?(?:\s*:.*?)?\s*\n/g;
+
+  const matches = [];
+  let match;
+  while ((match = sectionRegex.exec(synthesis)) !== null) {
+    matches.push({
+      index: match.index,
+      fullMatchEnd: match.index + match[0].length,
+      number: parseInt(match[1]),
+      rawTitle: match[2].replace(/\*\*/g, '').replace(/:.*$/, '').trim(),
+    });
+  }
+
+  if (matches.length === 0) {
+    // No numbered sections — return single block
+    return [{ number: null, title: 'Clinical Analysis', body: synthesis.trim(), type: 'default', style: SECTION_STYLES.default }];
+  }
+
+  const sections = matches.map((m, i) => {
+    const bodyStart = m.fullMatchEnd;
+    const bodyEnd = i < matches.length - 1 ? matches[i + 1].index : synthesis.length;
+    const body = synthesis.slice(bodyStart, bodyEnd).trim();
+    const type = _classifySectionType(m.rawTitle);
+
+    return {
+      number: m.number,
+      title: m.rawTitle,
+      body,
+      type,
+      style: SECTION_STYLES[type] || SECTION_STYLES.default,
+    };
+  });
+
+  return sections;
+}
+
+export { SECTION_STYLES };
+
+
 // ── Knowledge Gaps extraction ───────────────────────────────────
 
 /**

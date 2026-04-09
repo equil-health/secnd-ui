@@ -5,7 +5,7 @@ import useSdssPolling from '../hooks/useSdssPolling';
 import FormattedMarkdown from '../utils/formatReport';
 import UserBadge from '../components/UserBadge';
 import { exportSdssPDF, exportSdssDOCX, exportSdssHTML } from '../utils/sdssExport';
-import { renderEventItem, parseEventFields, extractVerdict, extractKnowledgeGaps, extractRecommendations, stripExtractedSections, VERDICT_LEVELS, PRIORITY_COLORS } from '../utils/reportHelpers';
+import { renderEventItem, parseEventFields, extractVerdict, extractKnowledgeGaps, extractRecommendations, stripExtractedSections, parseSynthesisSections, VERDICT_LEVELS, PRIORITY_COLORS } from '../utils/reportHelpers';
 
 // ── Pipeline stages ───────────────────────────────────────────
 const STAGES = [
@@ -652,26 +652,18 @@ function ClinicalReport({ result, mode, onReset, showFullReasoning, setShowFullR
         {/* ── Clinical Recommendations ── */}
         <RecommendationsTable result={result} />
 
-        {/* ── Clinical Analysis (synthesis — full narrative, below scannable sections) ── */}
-        {result.synthesis && (() => {
-          // Strip sections already rendered as dedicated components above
-          const hasGaps = extractKnowledgeGaps(result).length > 0;
-          const hasRecs = extractRecommendations(result).length > 0;
-          const cleanedSynthesis = (hasGaps || hasRecs) ? stripExtractedSections(result.synthesis) : result.synthesis;
-          return cleanedSynthesis ? (
-            <div className="px-6 py-5 border-b border-gray-100">
-              <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2 pl-3 border-l-[3px] border-indigo-500">
-                <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                </svg>
-                Clinical Analysis
-              </h2>
-              <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-headings:font-bold prose-headings:mt-6 prose-headings:mb-2 prose-p:text-gray-700 prose-p:leading-relaxed prose-p:mb-3 prose-li:text-gray-700 prose-strong:text-gray-900">
-                <FormattedMarkdown content={cleanedSynthesis} />
-              </div>
-            </div>
-          ) : null;
-        })()}
+        {/* ── Clinical Analysis (synthesis — structured accordion) ── */}
+        {result.synthesis && (
+          <div className="px-6 py-5 border-b border-gray-100">
+            <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2 pl-3 border-l-[3px] border-indigo-500">
+              <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+              </svg>
+              Clinical Analysis
+            </h2>
+            <SynthesisAccordion synthesis={result.synthesis} />
+          </div>
+        )}
 
         {/* ── References ── */}
         {result.references?.length > 0 && (
@@ -1055,6 +1047,77 @@ function RecommendationsTable({ result }) {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+//  SYNTHESIS ACCORDION — collapsible sections for clinical analysis
+// ═══════════════════════════════════════════════════════════════
+
+const SECTION_COLORS = {
+  verdict:         { border: 'border-l-amber-500',  bg: 'bg-amber-50',  numBg: 'bg-amber-500',  numText: 'text-white' },
+  safety:          { border: 'border-l-red-500',    bg: 'bg-red-50',    numBg: 'bg-red-500',    numText: 'text-white' },
+  imaging:         { border: 'border-l-blue-500',   bg: 'bg-blue-50',   numBg: 'bg-blue-500',   numText: 'text-white' },
+  differential:    { border: 'border-l-indigo-500', bg: 'bg-indigo-50', numBg: 'bg-indigo-500', numText: 'text-white' },
+  evidence:        { border: 'border-l-purple-500', bg: 'bg-purple-50', numBg: 'bg-purple-500', numText: 'text-white' },
+  gaps:            { border: 'border-l-orange-500', bg: 'bg-orange-50', numBg: 'bg-orange-500', numText: 'text-white' },
+  recommendations: { border: 'border-l-green-500',  bg: 'bg-green-50',  numBg: 'bg-green-500',  numText: 'text-white' },
+  disclaimer:      { border: 'border-l-gray-400',   bg: 'bg-gray-50',   numBg: 'bg-gray-400',   numText: 'text-white' },
+  default:         { border: 'border-l-slate-400',  bg: 'bg-slate-50',  numBg: 'bg-slate-500',  numText: 'text-white' },
+};
+
+function SynthesisAccordion({ synthesis }) {
+  const sections = parseSynthesisSections(synthesis);
+
+  if (sections.length === 0) return null;
+
+  // If there's only one section (no numbered headings found), render as prose
+  if (sections.length === 1 && sections[0].number === null) {
+    return (
+      <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-headings:font-bold prose-headings:mt-6 prose-headings:mb-2 prose-p:text-gray-700 prose-p:leading-relaxed prose-p:mb-3 prose-li:text-gray-700 prose-strong:text-gray-900">
+        <FormattedMarkdown content={synthesis} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {sections.map((section, i) => (
+        <SynthesisSection key={i} section={section} />
+      ))}
+    </div>
+  );
+}
+
+function SynthesisSection({ section }) {
+  const [expanded, setExpanded] = useState(section.style.autoExpand);
+  const colors = SECTION_COLORS[section.type] || SECTION_COLORS.default;
+
+  return (
+    <div className={`rounded-lg border border-gray-200 border-l-4 ${colors.border} overflow-hidden`}>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className={`w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-gray-50/50 transition-colors ${expanded ? colors.bg : ''}`}
+      >
+        {section.number && (
+          <span className={`w-7 h-7 rounded-lg ${colors.numBg} ${colors.numText} flex items-center justify-center text-xs font-bold flex-shrink-0`}>
+            {section.number}
+          </span>
+        )}
+        <span className="text-sm font-bold text-gray-900 flex-1">{section.title}</span>
+        <svg className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${expanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+      {expanded && (
+        <div className="px-4 pb-4 pt-1 ml-10">
+          <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-headings:font-bold prose-headings:mt-4 prose-headings:mb-1.5 prose-p:text-gray-700 prose-p:leading-relaxed prose-p:mb-2 prose-li:text-gray-700 prose-strong:text-gray-900">
+            <FormattedMarkdown content={section.body} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
