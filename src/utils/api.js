@@ -341,3 +341,27 @@ export async function sdssGetAudit(taskId) {
   const res = await request(`${BASE}/sdss/task/${taskId}/audit`);
   return res.json(); // { task_id, has_audit, audit_report }
 }
+
+
+// ── Chat (Open WebUI proxy) ──────────────────────────────────────
+
+/**
+ * Send chat completion request with SSE streaming.
+ * Returns raw Response — caller reads the stream via response.body.getReader().
+ */
+export async function chatCompletions(messages, reportContext = null) {
+  const body = { messages, stream: true };
+  if (reportContext) body.report_context = reportContext;
+
+  const res = await fetch(`${BASE}/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(body),
+  });
+  if (res.status === 401) { handle401(); throw new Error('Session expired'); }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || res.statusText);
+  }
+  return res;
+}

@@ -13,6 +13,7 @@ import AdminPage from './pages/AdminPage';
 import SecondOpinionPage from './pages/SecondOpinionPage';
 import SdssHistoryPage from './pages/SdssHistoryPage';
 import SdssReportPage from './pages/SdssReportPage';
+import ChatPage from './pages/ChatPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 export default function App() {
@@ -96,6 +97,22 @@ export default function App() {
         element={
           <ProtectedRoute>
             <SdssReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/chat"
+        element={
+          <ProtectedRoute>
+            <ChatPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/chat/:taskId"
+        element={
+          <ProtectedRoute>
+            <ChatPage />
           </ProtectedRoute>
         }
       />
