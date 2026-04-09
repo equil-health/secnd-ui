@@ -100,8 +100,8 @@ export function extractVerdict(result) {
 
   // Tier 2: parse from synthesis
   if (result.synthesis) {
-    // Try "Executive Verdict:" or "VERDICT:" patterns
-    const verdictRegex = /(?:##?\s*)?(?:executive\s+verdict|verdict)\s*[:—\-]\s*(.+?)(?:\n\n|\n##|\n---|\n\*\*|$)/is;
+    // Match "## Executive Verdict", "**1. EXECUTIVE VERDICT**", "1. EXECUTIVE VERDICT:", "VERDICT:" etc.
+    const verdictRegex = /(?:^|\n)\s*(?:#{1,3}\s+(?:\d+\.\s*)?|\*\*\s*(?:\d+\.\s+)?|\d+\.\s+)?\s*(?:executive\s+)?verdict\s*\**\s*[:—\-]?\s*(.+?)(?:\n\n|\n\s*(?:#{1,3}\s|\*\*\s*\d+\.|\d+\.\s+[A-Z])|\n---|\Z)/is;
     const match = result.synthesis.match(verdictRegex);
     if (match) {
       const text = match[1].trim().replace(/\*\*/g, '').replace(/\n/g, ' ').trim();
@@ -122,6 +122,65 @@ export function extractVerdict(result) {
 }
 
 export { VERDICT_LEVELS };
+
+
+// ── Synthesis section parser (handles ## Heading, **N. HEADING**, N. HEADING) ──
+
+/**
+ * Extract a named section body from synthesis markdown.
+ * Handles formats: "## Title", "**N. Title**", "N. Title", "# Title"
+ * Returns the section body text or null.
+ */
+function _extractSynthesisSection(synthesis, titlePattern) {
+  if (!synthesis) return null;
+
+  // Build a combined regex that matches various heading formats:
+  // 1. "## Knowledge Gaps" or "# Knowledge Gaps"
+  // 2. "**6. KNOWLEDGE GAPS**" or "**KNOWLEDGE GAPS**"
+  // 3. "6. KNOWLEDGE GAPS" at start of line
+  const headingPattern = new RegExp(
+    String.raw`(?:^|\n)\s*(?:#{1,3}\s+(?:\d+\.\s*)?|(?:\*\*\s*)?(?:\d+\.\s+)?(?:\*\*)?\s*)` +
+    `(${titlePattern.source})` +
+    String.raw`\s*\**\s*\n([\s\S]*?)(?=\n\s*(?:#{1,3}\s|\*\*\s*\d+\.\s|\d+\.\s+[A-Z]{2,}|\*\*[A-Z]{2,})|\n---|\Z)`,
+    titlePattern.flags.includes('i') ? 'i' : ''
+  );
+
+  const match = synthesis.match(headingPattern);
+  if (match) return match[2]?.trim() || null;
+  return null;
+}
+
+
+/**
+ * Strip extracted sections (Knowledge Gaps, Recommendations, Executive Verdict)
+ * from synthesis markdown to avoid duplicate display.
+ * Returns cleaned synthesis string.
+ */
+export function stripExtractedSections(synthesis) {
+  if (!synthesis) return synthesis;
+
+  const sectionsToStrip = [
+    /knowledge\s+gaps?/i,
+    /(?:clinical\s+)?recommendations?/i,
+    /executive\s+verdict/i,
+  ];
+
+  let cleaned = synthesis;
+  for (const titlePattern of sectionsToStrip) {
+    // Match the full section (heading + body) and remove it
+    const stripRegex = new RegExp(
+      String.raw`(?:^|\n)\s*(?:#{1,3}\s+(?:\d+\.\s*)?|(?:\*\*\s*)?(?:\d+\.\s+)?(?:\*\*)?\s*)` +
+      `(?:${titlePattern.source})` +
+      String.raw`\s*\**\s*\n[\s\S]*?(?=\n\s*(?:#{1,3}\s|\*\*\s*\d+\.\s|\d+\.\s+[A-Z]{2,}|\*\*[A-Z]{2,})|\n---|\Z)`,
+      titlePattern.flags.includes('i') ? 'gi' : 'g'
+    );
+    cleaned = cleaned.replace(stripRegex, '\n');
+  }
+
+  // Clean up multiple blank lines
+  cleaned = cleaned.replace(/\n{4,}/g, '\n\n\n');
+  return cleaned.trim();
+}
 
 
 // ── Knowledge Gaps extraction ───────────────────────────────────
@@ -146,14 +205,12 @@ export function extractKnowledgeGaps(result) {
 
   // Tier 2: parse from synthesis
   if (result.synthesis) {
-    const sectionRegex = /(?:##?\s*(?:Knowledge\s+Gaps?|Gaps?\s+in\s+Evidence|Information\s+Gaps?|Diagnostic\s+Gaps?))\s*\n([\s\S]*?)(?=\n##?\s|\n---|\n\*\*\d|$)/i;
-    const sectionMatch = result.synthesis.match(sectionRegex);
-    if (sectionMatch) {
-      const bullets = sectionMatch[1].match(/[-*]\s+(.+)/g);
+    const body = _extractSynthesisSection(result.synthesis, /knowledge\s+gaps?|gaps?\s+in\s+evidence|information\s+gaps?|diagnostic\s+gaps?/i);
+    if (body) {
+      const bullets = body.match(/[-*]\s+(.+)/g);
       if (bullets && bullets.length > 0) {
         return bullets.map(b => {
           const text = b.replace(/^[-*]\s+/, '').replace(/\*\*/g, '').trim();
-          // Split on common delimiters
           const delimMatch = text.match(/^(.+?)\s*[:—\-–]\s+(.+)$/);
           if (delimMatch) {
             return { gap: delimMatch[1].trim(), implication: delimMatch[2].trim() };
@@ -206,10 +263,9 @@ export function extractRecommendations(result) {
 
   // Tier 2: parse from synthesis
   if (recs.length === 0 && result.synthesis) {
-    const sectionRegex = /(?:##?\s*(?:Clinical\s+)?Recommendations?)\s*\n([\s\S]*?)(?=\n##?\s|\n---|\n\*\*\d|$)/i;
-    const sectionMatch = result.synthesis.match(sectionRegex);
-    if (sectionMatch) {
-      const bullets = sectionMatch[1].match(/(?:[-*]|\d+[.)]\s)\s*(.+)/g);
+    const body = _extractSynthesisSection(result.synthesis, /(?:clinical\s+)?recommendations?|recommended\s+(?:actions?|steps?|investigations?)/i);
+    if (body) {
+      const bullets = body.match(/(?:[-*]|\d+[.)]\s)\s*(.+)/g);
       if (bullets && bullets.length > 0) {
         recs = bullets.map(b => {
           const text = b.replace(/^(?:[-*]|\d+[.)]\s)\s*/, '').replace(/\*\*/g, '').trim();
