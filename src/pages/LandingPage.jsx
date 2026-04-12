@@ -184,13 +184,22 @@ export default function LandingPage() {
                 {/* Expanded sub-options */}
                 {isExpanded && (
                   <div className="mt-3 space-y-2 animate-fade-in-up">
-                    <button
-                      onClick={() => navigate('/second-opinion')}
-                      className="w-full rounded-xl px-4 py-3 text-sm font-semibold transition bg-purple-600 hover:bg-purple-700 text-white text-left flex items-center justify-between"
-                    >
-                      <span>SDSS Second Opinion</span>
-                      <span className="text-xs font-normal opacity-80">AI-Powered</span>
-                    </button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => navigate('/second-opinion')}
+                        className="rounded-xl px-4 py-3 text-sm font-semibold transition bg-purple-600 hover:bg-purple-700 text-white text-left flex items-center justify-between"
+                      >
+                        <span>SDSS Second Opinion</span>
+                        <span className="text-xs font-normal opacity-80">AI</span>
+                      </button>
+                      <button
+                        onClick={() => navigate('/chat')}
+                        className="rounded-xl px-4 py-3 text-sm font-semibold transition bg-indigo-600 hover:bg-indigo-700 text-white text-left flex items-center justify-between"
+                      >
+                        <span>SDSS Chat</span>
+                        <span className="text-xs font-normal opacity-80">AI</span>
+                      </button>
+                    </div>
                     <div className="grid grid-cols-3 gap-2">
                       <button
                         onClick={() => navigate('/submit')}

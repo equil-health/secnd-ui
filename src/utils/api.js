@@ -349,9 +349,9 @@ export async function sdssGetAudit(taskId) {
  * Send chat completion request with SSE streaming.
  * Returns raw Response — caller reads the stream via response.body.getReader().
  */
-export async function chatCompletions(messages, reportContext = null) {
+export async function chatCompletions(messages, taskId = null) {
   const body = { messages, stream: true };
-  if (reportContext) body.report_context = reportContext;
+  if (taskId) body.task_id = taskId;
 
   const res = await fetch(`${BASE}/chat/completions`, {
     method: 'POST',
@@ -364,4 +364,48 @@ export async function chatCompletions(messages, reportContext = null) {
     throw new Error(err.detail || res.statusText);
   }
   return res;
+}
+
+/**
+ * Trigger an SDSS analysis from within the chat, with optional files.
+ * Returns { task_id, status }.
+ */
+export async function chatAnalyze(caseText, mode = 'standard', files = []) {
+  const formData = new FormData();
+  formData.append('case_text', caseText);
+  formData.append('mode', mode);
+  for (const f of files) formData.append('files', f);
+
+  const res = await fetch(`${BASE}/chat/analyze`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: formData,
+  });
+  if (res.status === 401) { handle401(); throw new Error('Session expired'); }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || res.statusText);
+  }
+  return res.json();
+}
+
+/**
+ * Transcribe audio via MedASR.
+ * Returns { text, duration_ms }.
+ */
+export async function chatTranscribe(audioBlob) {
+  const formData = new FormData();
+  formData.append('audio', audioBlob, 'recording.webm');
+
+  const res = await fetch(`${BASE}/chat/transcribe`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: formData,
+  });
+  if (res.status === 401) { handle401(); throw new Error('Session expired'); }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || res.statusText);
+  }
+  return res.json();
 }

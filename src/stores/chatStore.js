@@ -4,7 +4,13 @@ const useChatStore = create((set, get) => ({
   messages: [],
   isStreaming: false,
   streamingContent: '',
-  reportContext: null, // { taskId, topDiagnosis, synthesis }
+  taskId: null,          // SDSS task ID — backend loads full report from DB
+  reportLabel: null,     // Display label for context banner
+
+  // Inline analysis state
+  analysisTaskId: null,  // Task ID of an in-progress analysis triggered from chat
+  analysisStatus: null,  // pending | processing | complete | failed
+  analysisCaseText: '',  // The case text being analysed
 
   addMessage: (msg) =>
     set((state) => ({ messages: [...state.messages, msg] })),
@@ -27,11 +33,45 @@ const useChatStore = create((set, get) => ({
     }
   },
 
-  setReportContext: (ctx) => set({ reportContext: ctx }),
+  setTaskContext: (taskId, label) => set({ taskId, reportLabel: label }),
+  clearTaskContext: () => set({ taskId: null, reportLabel: null }),
 
-  clearReportContext: () => set({ reportContext: null }),
+  // Start an inline analysis
+  startAnalysis: (analysisTaskId, caseText) => set({
+    analysisTaskId,
+    analysisStatus: 'pending',
+    analysisCaseText: caseText,
+  }),
 
-  clearChat: () => set({ messages: [], streamingContent: '', isStreaming: false, reportContext: null }),
+  // Update analysis progress
+  setAnalysisStatus: (status) => set({ analysisStatus: status }),
+
+  // Analysis complete — load report context into the chat
+  completeAnalysis: (taskId, topDiagnosis) => set({
+    taskId,
+    reportLabel: topDiagnosis || 'SDSS Report',
+    analysisTaskId: null,
+    analysisStatus: null,
+    analysisCaseText: '',
+  }),
+
+  // Analysis failed
+  failAnalysis: () => set({
+    analysisTaskId: null,
+    analysisStatus: null,
+    analysisCaseText: '',
+  }),
+
+  clearChat: () => set({
+    messages: [],
+    streamingContent: '',
+    isStreaming: false,
+    taskId: null,
+    reportLabel: null,
+    analysisTaskId: null,
+    analysisStatus: null,
+    analysisCaseText: '',
+  }),
 }));
 
 export default useChatStore;

@@ -85,7 +85,7 @@ export default function SecondOpinionPage() {
 
   useEffect(() => {
     sdssHealth()
-      .then((data) => { setServerOnline(true); setServerInfo(data); })
+      .then((data) => { setServerOnline(data?.status !== 'offline'); setServerInfo(data); })
       .catch(() => setServerOnline(false));
   }, []);
 

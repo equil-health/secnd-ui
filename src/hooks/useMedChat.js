@@ -8,7 +8,7 @@ import { chatCompletions } from '../utils/api';
  */
 export default function useMedChat() {
   const {
-    messages, isStreaming, streamingContent, reportContext,
+    messages, isStreaming, streamingContent, taskId,
     addMessage, setStreaming, appendStreamChunk, finalizeStream,
   } = useChatStore();
 
@@ -37,7 +37,7 @@ export default function useMedChat() {
     abortRef.current = new AbortController();
 
     try {
-      const response = await chatCompletions(apiMessages, reportContext);
+      const response = await chatCompletions(apiMessages, taskId);
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = ''; // Buffer for incomplete SSE lines
@@ -92,7 +92,7 @@ export default function useMedChat() {
       });
       setStreaming(false);
     }
-  }, [messages, isStreaming, reportContext, addMessage, setStreaming, appendStreamChunk, finalizeStream]);
+  }, [messages, isStreaming, taskId, addMessage, setStreaming, appendStreamChunk, finalizeStream]);
 
   const stopStreaming = useCallback(() => {
     abortRef.current?.abort();
