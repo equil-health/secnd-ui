@@ -19,11 +19,11 @@ let onProgressCb = null;
 function getWorker() {
   if (worker) return worker;
 
-  // Vite supports `new Worker(new URL(...), { type: 'module' })` and will
-  // bundle dependencies automatically.
+  // Classic worker (no `type: 'module'`) — paired with vite.config.js
+  // `worker.format: 'iife'` to produce a single inline bundle. ESM workers
+  // break when Vite can't resolve all onnxruntime-web asset imports.
   worker = new Worker(
-    new URL('../workers/asr.worker.js', import.meta.url),
-    { type: 'module' }
+    new URL('../workers/asr.worker.js', import.meta.url)
   );
 
   workerReady = new Promise((resolve, reject) => {
