@@ -46,6 +46,12 @@ function getWorker() {
 
   worker.addEventListener('message', (e) => {
     const msg = e.data;
+    if (msg.type === 'log') {
+      // Forward worker-side logs to the main console with a clear prefix.
+      const fn = msg.level === 'error' ? console.error : console.log;
+      fn('[asr.worker]', ...(msg.args || []));
+      return;
+    }
     if (msg.type === 'progress') {
       // Route progress: init events go to initProgressCb until 'ready',
       // transcribe-time events go to transcribeProgressCb.

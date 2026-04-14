@@ -46,6 +46,28 @@ let initPromise = null;
 
 function post(msg) { self.postMessage(msg); }
 
+function log(...args) {
+  try { console.log('[asr.worker]', ...args); } catch {}
+  try { self.postMessage({ type: 'log', level: 'info', args: args.map(a => {
+    if (a instanceof Error) return `${a.name}: ${a.message}\n${a.stack}`;
+    if (typeof a === 'object') { try { return JSON.stringify(a); } catch { return String(a); } }
+    return String(a);
+  })}); } catch {}
+}
+function logErr(...args) {
+  try { console.error('[asr.worker]', ...args); } catch {}
+  try { self.postMessage({ type: 'log', level: 'error', args: args.map(a => {
+    if (a instanceof Error) return `${a.name}: ${a.message}\n${a.stack}`;
+    if (typeof a === 'object') { try { return JSON.stringify(a); } catch { return String(a); } }
+    return String(a);
+  })}); } catch {}
+}
+
+log('worker booted. ort version:', ort.env?.versions?.common || '?',
+    'numThreads:', ort.env.wasm.numThreads,
+    'simd:', ort.env.wasm.simd,
+    'proxy:', ort.env.wasm.proxy);
+
 async function fetchJson(url) {
   const r = await fetch(url);
   if (!r.ok) throw new Error(`fetch ${url} failed: ${r.status}`);
@@ -53,14 +75,20 @@ async function fetchJson(url) {
 }
 
 async function fetchModelWithProgress(url) {
+  log('fetchModelWithProgress: GET', url);
   const r = await fetch(url);
+  log('fetchModelWithProgress: status', r.status, 'content-length',
+      r.headers.get('content-length'), 'content-encoding',
+      r.headers.get('content-encoding'));
   if (!r.ok) throw new Error(`fetch ${url} failed: ${r.status}`);
   const total = Number(r.headers.get('content-length')) || 0;
   if (!r.body || !total) {
+    log('fetchModelWithProgress: no body/content-length, fallback to arrayBuffer');
     // Fall back to plain arrayBuffer if server didn't send content-length
     // or ReadableStream is unavailable. No granular progress in that case.
     post({ type: 'progress', stage: 'model', pct: 0, loaded: 0, total: 0 });
     const buf = await r.arrayBuffer();
+    log('fetchModelWithProgress: fallback buffer', buf.byteLength, 'bytes');
     post({ type: 'progress', stage: 'model', pct: 100, loaded: buf.byteLength, total: buf.byteLength });
     return new Uint8Array(buf);
   }
@@ -93,29 +121,47 @@ async function fetchModelWithProgress(url) {
 async function initOnce() {
   if (initPromise) return initPromise;
   initPromise = (async () => {
+    log('init: start');
     post({ type: 'progress', stage: 'tokenizer', pct: 0 });
 
+    log('init: fetching mel_filters + tokenizer');
+    const t0 = performance.now();
     const [melJson, tokJson] = await Promise.all([
       fetchJson(MEL_URL),
       fetchJson(TOKENIZER_URL),
     ]);
+    log('init: tokenizer+mel fetched in', Math.round(performance.now() - t0), 'ms');
     melFilters = new Float64Array(melJson.data);
     vocab = buildVocab(tokJson);
+    log('init: vocab size', vocab.length, 'mel filters len', melFilters.length);
     post({ type: 'progress', stage: 'tokenizer', pct: 100 });
 
-    // Stream-fetch the 102MB onnx ourselves for real byte-level progress.
-    // Passing the completed buffer to InferenceSession.create bypasses ORT's
-    // internal fetch (which gives us no progress hooks).
+    log('init: streaming onnx from', MODEL_URL);
+    const tFetch = performance.now();
     const modelBytes = await fetchModelWithProgress(MODEL_URL);
+    log('init: onnx fetched,', modelBytes.byteLength, 'bytes in',
+        Math.round(performance.now() - tFetch), 'ms');
 
     post({ type: 'progress', stage: 'compile', pct: 0 });
-    session = await ort.InferenceSession.create(modelBytes, {
-      executionProviders: ['wasm'],
-      graphOptimizationLevel: 'all',
-    });
+    log('init: calling InferenceSession.create (this is the expensive step) ...');
+    const tCompile = performance.now();
+    try {
+      session = await ort.InferenceSession.create(modelBytes, {
+        executionProviders: ['wasm'],
+        graphOptimizationLevel: 'all',
+      });
+    } catch (err) {
+      logErr('InferenceSession.create FAILED:', err);
+      throw err;
+    }
+    log('init: InferenceSession.create OK in',
+        Math.round(performance.now() - tCompile), 'ms');
+    log('init: input names:', session.inputNames, 'output names:', session.outputNames);
     post({ type: 'progress', stage: 'compile', pct: 100 });
     post({ type: 'ready' });
+    log('init: DONE');
   })();
+  initPromise.catch((err) => logErr('init failed:', err));
   return initPromise;
 }
 
