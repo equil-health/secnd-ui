@@ -17,6 +17,12 @@
 //   { type: 'result', text, timings }
 //   { type: 'error', message }
 
+// If this script is loaded as an Emscripten pthread helper, do not run
+// our app-level code — ORT's own pthread handler (inside the imported
+// module) takes over. Without this guard, our top-level onmessage handler
+// would hijack pthread messaging and deadlock InferenceSession.create.
+const IS_EM_PTHREAD = typeof self !== 'undefined' && self.name === 'em-pthread';
+
 // Import the wasm-only entry, not the default, to keep Vite from bundling
 // the 25MB WebGPU/JSEP variant we don't use (INT8 runs on wasm only).
 import * as ort from 'onnxruntime-web/wasm';
@@ -28,11 +34,15 @@ import { buildVocab, greedyArgmax, ctcCollapse, decodeMetaspace } from '../utils
 // import pulls in a hashed .wasm that Vite emits to /assets/ and bakes
 // the correct URL into the worker bundle. No wasmPaths override needed.
 //
-// We're already running inside a worker, so disable ORT's internal
-// "proxy worker" — that nested-worker layer is ESM-only and breaks when
-// bundled into a classic IIFE parent worker (manifests as 8 stub fetches).
+// Single-threaded WASM only. Multi-threaded WASM spawns pthread workers
+// by re-loading this same script, which re-runs our top-level init and
+// hijacks onmessage in every pthread context. That manifested as "worker
+// booted" firing N times and InferenceSession.create hanging forever.
+//
+// The speedup from threads=8 vs threads=1 on 5s clips is ~2-3x, not worth
+// the bundling complexity. Inference still completes in 1-3s single-threaded.
 ort.env.wasm.proxy = false;
-ort.env.wasm.numThreads = Math.max(1, Math.min(8, self.navigator?.hardwareConcurrency || 4));
+ort.env.wasm.numThreads = 1;
 ort.env.wasm.simd = true;
 
 const MODEL_URL = '/models/medasr_int8.onnx';
@@ -63,10 +73,12 @@ function logErr(...args) {
   })}); } catch {}
 }
 
-log('worker booted. ort version:', ort.env?.versions?.common || '?',
-    'numThreads:', ort.env.wasm.numThreads,
-    'simd:', ort.env.wasm.simd,
-    'proxy:', ort.env.wasm.proxy);
+if (!IS_EM_PTHREAD) {
+  log('worker booted. ort version:', ort.env?.versions?.common || '?',
+      'numThreads:', ort.env.wasm.numThreads,
+      'simd:', ort.env.wasm.simd,
+      'proxy:', ort.env.wasm.proxy);
+}
 
 async function fetchJson(url) {
   const r = await fetch(url);
@@ -212,7 +224,7 @@ async function transcribe(audio) {
   };
 }
 
-self.onmessage = async (e) => {
+if (!IS_EM_PTHREAD) self.onmessage = async (e) => {
   const msg = e.data;
   try {
     if (msg.type === 'init') {
