@@ -27,6 +27,11 @@ import { buildVocab, greedyArgmax, ctcCollapse, decodeMetaspace } from '../utils
 // Let Vite handle wasm asset resolution — the 'onnxruntime-web/wasm'
 // import pulls in a hashed .wasm that Vite emits to /assets/ and bakes
 // the correct URL into the worker bundle. No wasmPaths override needed.
+//
+// We're already running inside a worker, so disable ORT's internal
+// "proxy worker" — that nested-worker layer is ESM-only and breaks when
+// bundled into a classic IIFE parent worker (manifests as 8 stub fetches).
+ort.env.wasm.proxy = false;
 ort.env.wasm.numThreads = Math.max(1, Math.min(8, self.navigator?.hardwareConcurrency || 4));
 ort.env.wasm.simd = true;
 
@@ -47,10 +52,48 @@ async function fetchJson(url) {
   return r.json();
 }
 
+async function fetchModelWithProgress(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`fetch ${url} failed: ${r.status}`);
+  const total = Number(r.headers.get('content-length')) || 0;
+  if (!r.body || !total) {
+    // Fall back to plain arrayBuffer if server didn't send content-length
+    // or ReadableStream is unavailable. No granular progress in that case.
+    post({ type: 'progress', stage: 'model', pct: 0, loaded: 0, total: 0 });
+    const buf = await r.arrayBuffer();
+    post({ type: 'progress', stage: 'model', pct: 100, loaded: buf.byteLength, total: buf.byteLength });
+    return new Uint8Array(buf);
+  }
+
+  const reader = r.body.getReader();
+  const chunks = [];
+  let loaded = 0;
+  let lastPct = -1;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    loaded += value.length;
+    const pct = Math.floor((loaded / total) * 100);
+    if (pct !== lastPct) {
+      post({ type: 'progress', stage: 'model', pct, loaded, total });
+      lastPct = pct;
+    }
+  }
+  // Concat chunks into one buffer
+  const out = new Uint8Array(loaded);
+  let offset = 0;
+  for (const c of chunks) {
+    out.set(c, offset);
+    offset += c.length;
+  }
+  return out;
+}
+
 async function initOnce() {
   if (initPromise) return initPromise;
   initPromise = (async () => {
-    post({ type: 'progress', stage: 'loading', pct: 0 });
+    post({ type: 'progress', stage: 'tokenizer', pct: 0 });
 
     const [melJson, tokJson] = await Promise.all([
       fetchJson(MEL_URL),
@@ -58,13 +101,19 @@ async function initOnce() {
     ]);
     melFilters = new Float64Array(melJson.data);
     vocab = buildVocab(tokJson);
-    post({ type: 'progress', stage: 'loading', pct: 25 });
+    post({ type: 'progress', stage: 'tokenizer', pct: 100 });
 
-    session = await ort.InferenceSession.create(MODEL_URL, {
+    // Stream-fetch the 102MB onnx ourselves for real byte-level progress.
+    // Passing the completed buffer to InferenceSession.create bypasses ORT's
+    // internal fetch (which gives us no progress hooks).
+    const modelBytes = await fetchModelWithProgress(MODEL_URL);
+
+    post({ type: 'progress', stage: 'compile', pct: 0 });
+    session = await ort.InferenceSession.create(modelBytes, {
       executionProviders: ['wasm'],
       graphOptimizationLevel: 'all',
     });
-    post({ type: 'progress', stage: 'loading', pct: 100 });
+    post({ type: 'progress', stage: 'compile', pct: 100 });
     post({ type: 'ready' });
   })();
   return initPromise;

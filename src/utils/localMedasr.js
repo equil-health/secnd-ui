@@ -14,7 +14,9 @@ const TARGET_SAMPLE_RATE = 16000;
 let worker = null;
 let workerReady = null;      // Promise that resolves when worker posts 'ready'
 let pending = null;          // { resolve, reject } for in-flight transcribe
-let onProgressCb = null;
+let transcribeProgressCb = null;
+let initProgressCb = null;   // receives progress events until 'ready'
+let isReady = false;
 
 function getWorker() {
   if (worker) return worker;
@@ -30,6 +32,7 @@ function getWorker() {
     const onMessage = (e) => {
       const msg = e.data;
       if (msg.type === 'ready') {
+        isReady = true;
         worker.removeEventListener('message', onMessage);
         resolve();
       } else if (msg.type === 'error' && !pending) {
@@ -43,8 +46,11 @@ function getWorker() {
 
   worker.addEventListener('message', (e) => {
     const msg = e.data;
-    if (msg.type === 'progress' && onProgressCb) {
-      onProgressCb(msg.stage, msg.pct);
+    if (msg.type === 'progress') {
+      // Route progress: init events go to initProgressCb until 'ready',
+      // transcribe-time events go to transcribeProgressCb.
+      const cb = isReady ? transcribeProgressCb : initProgressCb;
+      if (cb) cb(msg);
     } else if (msg.type === 'result' && pending) {
       const { resolve } = pending;
       pending = null;
@@ -64,10 +70,34 @@ function getWorker() {
     }
   });
 
-  // Kick off model load proactively — user will likely transcribe soon.
+  // Kick off model load proactively.
   worker.postMessage({ type: 'init' });
 
   return worker;
+}
+
+/**
+ * Start loading the MedASR model immediately and report progress.
+ * Idempotent — safe to call multiple times; subsequent calls reuse the
+ * in-flight or completed download. Resolves when the model is ready to
+ * transcribe.
+ *
+ * @param {(evt: {type:'progress', stage:string, pct:number, loaded?:number, total?:number}) => void} [onProgress]
+ * @returns {Promise<void>}
+ */
+export async function prefetchMedasr(onProgress) {
+  getWorker();
+  if (onProgress) initProgressCb = onProgress;
+  try {
+    await workerReady;
+  } finally {
+    initProgressCb = null;
+  }
+}
+
+/** @returns {boolean} */
+export function isMedasrReady() {
+  return isReady;
 }
 
 /**
@@ -146,7 +176,7 @@ export async function localChatTranscribe(audioBlob, onProgress) {
   getWorker(); // ensure worker exists and init has been kicked off
   await workerReady;
 
-  onProgressCb = onProgress || null;
+  transcribeProgressCb = onProgress || null;
 
   const t0 = performance.now();
   const audio = await blobToMono16kFloat32(audioBlob);
@@ -161,7 +191,7 @@ export async function localChatTranscribe(audioBlob, onProgress) {
   });
 
   const duration_ms = Math.round(performance.now() - t0);
-  onProgressCb = null;
+  transcribeProgressCb = null;
 
   return {
     text: result.text,
@@ -177,5 +207,8 @@ export function disposeLocalMedasr() {
     worker = null;
     workerReady = null;
     pending = null;
+    isReady = false;
+    initProgressCb = null;
+    transcribeProgressCb = null;
   }
 }

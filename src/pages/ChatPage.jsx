@@ -7,7 +7,7 @@ import ChatMessage from '../components/ChatMessage';
 import UserBadge from '../components/UserBadge';
 import FormattedMarkdown from '../utils/formatReport';
 import { sdssGetTask, chatAnalyze } from '../utils/api';
-import { localChatTranscribe as chatTranscribe } from '../utils/localMedasr';
+import { localChatTranscribe as chatTranscribe, prefetchMedasr } from '../utils/localMedasr';
 
 
 // Pipeline stages
@@ -62,6 +62,7 @@ export default function ChatPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
+  const [medasrLoad, setMedasrLoad] = useState({ stage: 'loading', pct: 0 });
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -178,6 +179,28 @@ export default function ChatPage() {
       mediaRecorderRef.current?.stop();
       clearInterval(recordingTimerRef.current);
     };
+  }, []);
+
+  // Prefetch MedASR model on mount so the user doesn't pay the 102MB
+  // download cost on first mic click. Idempotent across remounts.
+  useEffect(() => {
+    let cancelled = false;
+    prefetchMedasr((evt) => {
+      if (cancelled) return;
+      setMedasrLoad({
+        stage: evt.stage,
+        pct: evt.pct ?? 0,
+        loaded: evt.loaded,
+        total: evt.total,
+      });
+    })
+      .then(() => {
+        if (!cancelled) setMedasrLoad({ stage: 'ready', pct: 100 });
+      })
+      .catch((err) => {
+        if (!cancelled) setMedasrLoad({ stage: 'error', pct: 0, message: err.message });
+      });
+    return () => { cancelled = true; };
   }, []);
 
   // ── Voice input (MediaRecorder → MedASR) ─────────────────────
@@ -658,6 +681,24 @@ export default function ChatPage() {
               <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-amber-50 text-amber-600 flex-shrink-0">
                 <div className="w-3.5 h-3.5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
                 <span className="text-xs font-medium">Transcribing...</span>
+              </div>
+            ) : medasrLoad.stage !== 'ready' && medasrLoad.stage !== 'error' ? (
+              // Model still loading — show progress pill instead of mic button
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-indigo-50 text-indigo-600 flex-shrink-0" title="MedASR model is downloading">
+                <div className="w-3.5 h-3.5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                <span className="text-xs font-medium tabular-nums">
+                  {medasrLoad.stage === 'model'
+                    ? `Loading model ${medasrLoad.pct}%`
+                    : medasrLoad.stage === 'compile'
+                    ? 'Compiling…'
+                    : medasrLoad.stage === 'tokenizer'
+                    ? 'Loading tokenizer…'
+                    : 'Loading…'}
+                </span>
+              </div>
+            ) : medasrLoad.stage === 'error' ? (
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-red-50 text-red-600 flex-shrink-0" title={medasrLoad.message || 'MedASR failed to load'}>
+                <span className="text-xs font-medium">Mic unavailable</span>
               </div>
             ) : (
               <button
