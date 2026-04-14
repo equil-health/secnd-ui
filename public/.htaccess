@@ -1,0 +1,42 @@
+# SECND frontend — Apache config
+#
+# SPA routing is handled at the vhost level via `FallbackResource /index.html`
+# so this file only deals with headers, caching, and MIME.
+#
+# 1. COOP/COEP: required for onnxruntime-web to use multi-threaded WASM
+#    (SharedArrayBuffer) when running MedASR client-side in the chat page.
+#    Site-wide because COEP sticks to the browsing context, not the route.
+# 2. CORP on same-origin binaries: required so COEP will load them.
+# 3. Long cache on model/wasm: versioned via content hash (wasm) or by
+#    filename rename (onnx).
+
+<IfModule mod_headers.c>
+  # Enable cross-origin isolation so SharedArrayBuffer is available.
+  # Required by onnxruntime-web's multi-threaded WASM backend.
+  Header always set Cross-Origin-Opener-Policy "same-origin"
+  Header always set Cross-Origin-Embedder-Policy "require-corp"
+
+  # Every same-origin binary that needs to load under COEP must declare
+  # it explicitly. Without this, the browser will refuse to fetch them.
+  <FilesMatch "\.(onnx|wasm|mjs|json)$">
+    Header always set Cross-Origin-Resource-Policy "same-origin"
+  </FilesMatch>
+
+  # Cache immutable binaries aggressively. Update strategy: rename on
+  # change (e.g. medasr_int8.v2.onnx) or append ?v=hash query.
+  <FilesMatch "\.(onnx|wasm)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+
+  # Tokenizer/mel filterbank change rarely; cache for a day.
+  <FilesMatch "^(tokenizer|mel_filters|preprocessor_config|processor_config|tokenizer_config|added_tokens)\.json$">
+    Header set Cache-Control "public, max-age=86400"
+  </FilesMatch>
+</IfModule>
+
+# Ensure correct MIME types for the ONNX and WASM assets.
+<IfModule mod_mime.c>
+  AddType application/wasm .wasm
+  AddType application/octet-stream .onnx
+  AddType text/javascript .mjs
+</IfModule>

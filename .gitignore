@@ -3,3 +3,7 @@ dist/
 .env
 
 .vercel
+
+public/models/*.onnx
+src/utils/__tests__/reference_features.json
+src/utils/__tests__/reference_pred_ids.json

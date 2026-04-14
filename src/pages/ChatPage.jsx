@@ -6,7 +6,8 @@ import useSdssPolling from '../hooks/useSdssPolling';
 import ChatMessage from '../components/ChatMessage';
 import UserBadge from '../components/UserBadge';
 import FormattedMarkdown from '../utils/formatReport';
-import { sdssGetTask, chatAnalyze, chatTranscribe } from '../utils/api';
+import { sdssGetTask, chatAnalyze } from '../utils/api';
+import { localChatTranscribe as chatTranscribe } from '../utils/localMedasr';
 
 
 // Pipeline stages
