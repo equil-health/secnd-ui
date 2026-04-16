@@ -184,6 +184,13 @@ export default function LandingPage() {
                 {/* Expanded sub-options */}
                 {isExpanded && (
                   <div className="mt-3 space-y-2 animate-fade-in-up">
+                    <button
+                      onClick={() => navigate('/case')}
+                      className="w-full rounded-xl px-4 py-3 text-sm font-semibold transition bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-left flex items-center justify-between"
+                    >
+                      <span>Verified Case (v2)</span>
+                      <span className="text-xs font-normal opacity-80">GPU-powered</span>
+                    </button>
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={() => navigate('/second-opinion')}
