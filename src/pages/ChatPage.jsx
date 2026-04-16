@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import useMedChat from '../hooks/useMedChat';
+import useMedASR from '../hooks/useMedASR';
 import useChatStore from '../stores/chatStore';
 import useSdssPolling from '../hooks/useSdssPolling';
 import ChatMessage from '../components/ChatMessage';
 import UserBadge from '../components/UserBadge';
 import FormattedMarkdown from '../utils/formatReport';
 import { sdssGetTask, chatAnalyze } from '../utils/api';
-import { localChatTranscribe as chatTranscribe, prefetchMedasr } from '../utils/localMedasr';
 
 
 // Pipeline stages
@@ -59,18 +59,16 @@ export default function ChatPage() {
   const [analyzeStage, setAnalyzeStage] = useState(0);
   const [dragOver, setDragOver] = useState(false);
   const [fileError, setFileError] = useState(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
-  const [recordingDuration, setRecordingDuration] = useState(0);
-  const [medasrLoad, setMedasrLoad] = useState({ stage: 'loading', pct: 0 });
+  const {
+    isModelReady, isModelError, modelStatus: medasrLoad,
+    isRecording, isTranscribing, recordingDuration,
+    startRecording, stopAndTranscribe, cancelRecording,
+  } = useMedASR({ onError: (err) => setFileError(err.message) });
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
   const timerRef = useRef(null);
   const stageTimerRef = useRef(null);
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
-  const recordingTimerRef = useRef(null);
   const plusMenuRef = useRef(null);
 
   // Poll for analysis result
@@ -173,107 +171,23 @@ export default function ChatPage() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showPlusMenu]);
 
-  // Cleanup recorder on unmount
-  useEffect(() => {
-    return () => {
-      mediaRecorderRef.current?.stop();
-      clearInterval(recordingTimerRef.current);
-    };
-  }, []);
-
-  // Prefetch MedASR model on mount so the user doesn't pay the 102MB
-  // download cost on first mic click. Idempotent across remounts.
-  useEffect(() => {
-    let cancelled = false;
-    prefetchMedasr((evt) => {
-      if (cancelled) return;
-      setMedasrLoad({
-        stage: evt.stage,
-        pct: evt.pct ?? 0,
-        loaded: evt.loaded,
-        total: evt.total,
-      });
-    })
-      .then(() => {
-        if (!cancelled) setMedasrLoad({ stage: 'ready', pct: 100 });
-      })
-      .catch((err) => {
-        if (!cancelled) setMedasrLoad({ stage: 'error', pct: 0, message: err.message });
-      });
-    return () => { cancelled = true; };
-  }, []);
-
-  // ── Voice input (MediaRecorder → MedASR) ─────────────────────
+  // ── Voice input (via useMedASR hook) ──────────────────────────
   async function toggleVoice() {
     if (isRecording) {
-      // Stop recording — the onstop handler will send to MedASR
-      mediaRecorderRef.current?.stop();
-      clearInterval(recordingTimerRef.current);
-      setIsRecording(false);
+      setFileError(null);
+      try {
+        const { text } = await stopAndTranscribe();
+        if (text) {
+          setInput((prev) => prev ? `${prev} ${text}` : text);
+          textareaRef.current?.focus();
+        }
+      } catch (err) {
+        setFileError(`Transcription failed: ${err.message}`);
+      }
       return;
     }
-
     setFileError(null);
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-          ? 'audio/webm;codecs=opus'
-          : 'audio/webm',
-      });
-
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunksRef.current.push(e.data);
-      };
-
-      mediaRecorder.onstop = async () => {
-        // Stop all mic tracks
-        stream.getTracks().forEach((t) => t.stop());
-
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        audioChunksRef.current = [];
-
-        if (audioBlob.size < 1000) {
-          // Too short, ignore
-          return;
-        }
-
-        // Send to MedASR
-        setIsTranscribing(true);
-        try {
-          const { text } = await chatTranscribe(audioBlob);
-          if (text && text.trim()) {
-            setInput((prev) => prev ? `${prev} ${text.trim()}` : text.trim());
-            textareaRef.current?.focus();
-          }
-        } catch (err) {
-          setFileError(`Transcription failed: ${err.message}`);
-        } finally {
-          setIsTranscribing(false);
-        }
-      };
-
-      mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start(250); // collect in 250ms chunks
-      setIsRecording(true);
-      setRecordingDuration(0);
-
-      // Duration counter
-      const startTime = Date.now();
-      recordingTimerRef.current = setInterval(() => {
-        setRecordingDuration(Math.floor((Date.now() - startTime) / 1000));
-      }, 1000);
-
-    } catch (err) {
-      if (err.name === 'NotAllowedError') {
-        setFileError('Microphone access denied. Please allow microphone access in your browser settings.');
-      } else {
-        setFileError(`Could not access microphone: ${err.message}`);
-      }
-    }
+    startRecording();
   }
 
   // ── File management ──────────────────────────────────────────
@@ -348,11 +262,7 @@ export default function ChatPage() {
 
   function handleSend() {
     if (!input.trim() || isStreaming) return;
-    if (isRecording) {
-      mediaRecorderRef.current?.stop();
-      clearInterval(recordingTimerRef.current);
-      setIsRecording(false);
-    }
+    if (isRecording) cancelRecording();
     sendMessage(input);
     setInput('');
   }
@@ -369,7 +279,7 @@ export default function ChatPage() {
     resetPoll();
     setFiles([]);
     setFileError(null);
-    if (isRecording) { mediaRecorderRef.current?.stop(); clearInterval(recordingTimerRef.current); setIsRecording(false); }
+    if (isRecording) cancelRecording();
     clearInterval(timerRef.current);
     clearTimeout(stageTimerRef.current);
     if (routeTaskId) navigate('/chat');
@@ -682,7 +592,7 @@ export default function ChatPage() {
                 <div className="w-3.5 h-3.5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
                 <span className="text-xs font-medium">Transcribing...</span>
               </div>
-            ) : medasrLoad.stage !== 'ready' && medasrLoad.stage !== 'error' ? (
+            ) : !isModelReady && !isModelError ? (
               // Model still loading — show progress pill instead of mic button
               <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-indigo-50 text-indigo-600 flex-shrink-0" title="MedASR model is downloading">
                 <div className="w-3.5 h-3.5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
@@ -696,7 +606,7 @@ export default function ChatPage() {
                     : 'Loading…'}
                 </span>
               </div>
-            ) : medasrLoad.stage === 'error' ? (
+            ) : isModelError ? (
               <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-red-50 text-red-600 flex-shrink-0" title={medasrLoad.message || 'MedASR failed to load'}>
                 <span className="text-xs font-medium">Mic unavailable</span>
               </div>

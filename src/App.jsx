@@ -14,6 +14,7 @@ import SecondOpinionPage from './pages/SecondOpinionPage';
 import SdssHistoryPage from './pages/SdssHistoryPage';
 import SdssReportPage from './pages/SdssReportPage';
 import ChatPage from './pages/ChatPage';
+import SecondOpinionV2Page from './pages/SecondOpinionV2Page';
 import ProtectedRoute from './components/ProtectedRoute';
 
 export default function App() {
@@ -97,6 +98,22 @@ export default function App() {
         element={
           <ProtectedRoute>
             <SdssReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/case"
+        element={
+          <ProtectedRoute>
+            <SecondOpinionV2Page />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/case/:caseId"
+        element={
+          <ProtectedRoute>
+            <SecondOpinionV2Page />
           </ProtectedRoute>
         }
       />
