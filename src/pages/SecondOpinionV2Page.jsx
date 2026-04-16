@@ -262,9 +262,11 @@ export default function SecondOpinionV2Page() {
             {/* Report */}
             {hasReport && (
               <>
-                {/* Toolbar */}
+                {/* Deep Dive CTA */}
+                <DeepDiveButton status={status} onTrigger={handleDeepDive} />
+
+                {/* Secondary toolbar */}
                 <div className="flex items-center gap-2">
-                  <DeepDiveButton status={status} onTrigger={handleDeepDive} />
                   <button
                     onClick={() => store.getState().toggleAudit()}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium transition"
@@ -274,11 +276,6 @@ export default function SecondOpinionV2Page() {
                     </svg>
                     Audit Trail
                   </button>
-                  {status === 'running_phase_b' && (
-                    <span className="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded-lg">
-                      Deep dive in progress — chat available
-                    </span>
-                  )}
                 </div>
 
                 <ReportRenderer report={report} />
