@@ -358,6 +358,8 @@ export function streamCaseStatus(caseId) {
     return mock;
   }
 
+  // Real backend emits: 'status', 'report_ready', 'phase_complete', 'error'
+  // (not per-stage events — it polls disk state every 2s)
   return new EventSource(`${GPU_BASE}/v2/case/${caseId}/status/stream`);
 }
 
@@ -443,53 +445,29 @@ export async function getCaseAudit(caseId) {
 }
 
 /**
- * Chat with the case-aware model. Returns a Response for streaming.
- * @returns {Promise<Response>}
+ * Chat with the case-aware model.
+ *
+ * Backend returns a complete OpenAI-compatible JSON response (non-streaming).
+ * Mock mode simulates word-by-word streaming for a realistic dev experience.
+ *
+ * @returns {Promise<{content: string, queuePosition: number, reportVersionUsed: number}>}
  */
-export async function chatCompletion(caseId, messages, { stream = true, maxTokens = 512, temperature = 0.4 } = {}) {
+export async function chatCompletion(caseId, messages, { maxTokens = 512, temperature = 0.4 } = {}) {
   if (USE_MOCKS) {
-    // Return a mock streaming response
     const mockText = "Based on the verified report, autoimmune hepatitis (AIH) is the leading diagnosis supported by the combination of elevated IgG (2400 mg/dL), positive ANA at 1:320, and positive ASMA. These three markers together form the classic serological triad for type 1 AIH.\n\nHowever, the treatment hold on corticosteroids is critical here — lymphoma must be excluded first because:\n\n1. The 4cm liver lesion is uncharacterised\n2. Ferritin is markedly elevated at 890 ng/mL (though CRP elevation suggests this may be partially reactive)\n3. Corticosteroids could mask lymphoproliferative disease\n\nThe recommended next steps are liver biopsy with immunohistochemistry and MRI with hepatobiliary contrast agent before any treatment decisions.";
 
-    if (!stream) {
-      await mockDelay(500);
-      return {
-        ok: true,
-        json: async () => ({
-          choices: [{ message: { role: 'assistant', content: mockText } }],
-        }),
-      };
-    }
-
-    // Simulate SSE streaming
-    const words = mockText.split(' ');
-    const encoder = new TextEncoder();
-    let i = 0;
-    const readableStream = new ReadableStream({
-      async pull(controller) {
-        if (i < words.length) {
-          const chunk = (i === 0 ? '' : ' ') + words[i];
-          const data = JSON.stringify({ choices: [{ delta: { content: chunk } }] });
-          controller.enqueue(encoder.encode(`data: ${data}\n\n`));
-          i++;
-          await new Promise((r) => setTimeout(r, 30 + Math.random() * 40));
-        } else {
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-          controller.close();
-        }
-      },
-    });
-
-    return new Response(readableStream, {
-      status: 200,
-      headers: { 'Content-Type': 'text/event-stream' },
-    });
+    // Simulate latency
+    await mockDelay(800 + Math.random() * 1200);
+    return {
+      content: mockText,
+      queuePosition: 0,
+      reportVersionUsed: 1,
+    };
   }
 
-  return fetch(`${GPU_BASE}/v2/chat/completions`, {
+  const res = await gpuFetch('/v2/chat/completions', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
       'X-SECND-Case-Id': caseId,
     },
     body: JSON.stringify({
@@ -497,9 +475,16 @@ export async function chatCompletion(caseId, messages, { stream = true, maxToken
       messages,
       max_tokens: maxTokens,
       temperature,
-      stream,
+      stream: false,
     }),
   });
+  const data = await res.json();
+
+  return {
+    content: data.choices?.[0]?.message?.content || '',
+    queuePosition: data.secnd?.queue_position || 0,
+    reportVersionUsed: data.secnd?.report_version_used || 0,
+  };
 }
 
 /**

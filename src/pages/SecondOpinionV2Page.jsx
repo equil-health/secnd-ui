@@ -64,6 +64,7 @@ export default function SecondOpinionV2Page() {
       const sse = streamCaseStatus(id);
       sseRef.current = sse;
 
+      // Mock SSE events (per-stage granularity)
       sse.addEventListener('stage_started', (e) => {
         const data = JSON.parse(e.data);
         store.getState().stageStarted(data.stage);
@@ -74,13 +75,35 @@ export default function SecondOpinionV2Page() {
         store.getState().stageCompleted(data.stage, data.duration_ms);
       });
 
+      // Real backend SSE events (disk-poll based, 2s intervals)
+      sse.addEventListener('status', (e) => {
+        const data = JSON.parse(e.data);
+        // Backend sends {status: "running_phase_a"} — use it to confirm phase
+        if (data.status === 'failed') {
+          sse.close?.();
+          sseRef.current = null;
+          clearInterval(elapsedRef.current);
+          store.getState().setFailed(data.error || 'Pipeline failed');
+        }
+      });
+
+      sse.addEventListener('report_ready', (e) => {
+        // Backend emits when a new report version is written to disk
+        // We'll fetch it on phase_complete
+      });
+
       sse.addEventListener('phase_complete', async (e) => {
         const data = JSON.parse(e.data);
         sse.close?.();
         sseRef.current = null;
         clearInterval(elapsedRef.current);
 
-        store.getState().phaseAComplete();
+        // Backend sends {status, report_version} — handle both Phase A and B
+        if (data.status === 'phase_b_complete') {
+          store.getState().phaseBComplete(data.report_version);
+        } else {
+          store.getState().phaseAComplete();
+        }
         await fetchReport(id);
       });
 
@@ -99,6 +122,13 @@ export default function SecondOpinionV2Page() {
       });
     } catch {
       // SSE not supported — fall back to polling
+      startPolling(id);
+    }
+
+    // Also start polling alongside SSE — the SSE stream from the real backend
+    // doesn't send per-stage progress, so polling fills in stages_completed
+    // for the progress timeline display
+    if (import.meta.env.VITE_GPU_POD_URL) {
       startPolling(id);
     }
   }
