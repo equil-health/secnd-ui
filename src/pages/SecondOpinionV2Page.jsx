@@ -108,64 +108,88 @@ export default function SecondOpinionV2Page() {
       });
 
       sse.addEventListener('error', (e) => {
-        // SSE errors — try falling back to polling
+        // SSE connection dropped (common with ngrok/cloudflared tunnels)
+        // Check if it's a backend error event with data, or a connection drop
         let errorData;
         try { errorData = JSON.parse(e.data); } catch { errorData = null; }
 
         if (errorData?.message) {
+          // Backend sent an explicit error — fatal
           sse.close?.();
           sseRef.current = null;
           clearInterval(elapsedRef.current);
           store.getState().setFailed(errorData.message);
+        } else {
+          // Connection drop — close SSE, let polling handle it
+          console.warn('SSE connection dropped — polling will continue');
+          sse.close?.();
+          sseRef.current = null;
         }
-        // If it's a connection error, EventSource will auto-reconnect
       });
     } catch {
       // SSE not supported — fall back to polling
       startPolling(id);
     }
 
-    // Also start polling alongside SSE — the SSE stream from the real backend
-    // doesn't send per-stage progress, so polling fills in stages_completed
-    // for the progress timeline display
-    if (import.meta.env.VITE_GPU_POD_URL) {
-      startPolling(id);
-    }
+    // Always poll alongside SSE — SSE may drop through tunnels (ngrok/cloudflared)
+    // and polling is the reliable fallback for both progress and completion
+    startPolling(id);
   }
 
   function startPolling(id) {
+    let consecutiveErrors = 0;
     pollRef.current = setInterval(async () => {
       try {
         const data = await getCaseStatus(id);
+        consecutiveErrors = 0; // Reset on success
         store.getState().updateStatus(data);
 
         if (data.status === 'phase_a_complete') {
           clearInterval(pollRef.current);
           clearInterval(elapsedRef.current);
+          // Close SSE if still open — polling won the race
+          sseRef.current?.close?.();
+          sseRef.current = null;
           store.getState().phaseAComplete();
           await fetchReport(id);
         } else if (data.status === 'phase_b_complete') {
           clearInterval(pollRef.current);
+          sseRef.current?.close?.();
+          sseRef.current = null;
           store.getState().phaseBComplete(data.report_version);
           await fetchReport(id);
         } else if (data.status === 'failed') {
           clearInterval(pollRef.current);
           clearInterval(elapsedRef.current);
+          sseRef.current?.close?.();
+          sseRef.current = null;
           store.getState().setFailed(data.error);
         }
       } catch (err) {
-        // Ignore transient fetch errors during polling
+        consecutiveErrors++;
+        console.warn(`Poll error ${consecutiveErrors}:`, err.message);
+        if (consecutiveErrors >= 10) {
+          clearInterval(pollRef.current);
+          clearInterval(elapsedRef.current);
+          store.getState().setFailed('Lost connection to GPU pod. Refresh the page to check if your report completed.');
+        }
       }
-    }, 1500);
+    }, 2000);
   }
 
-  async function fetchReport(id) {
-    try {
-      const reportData = await getCaseReport(id, 'json');
-      store.getState().setReport(reportData);
-    } catch (err) {
-      // Report fetch failed — not fatal, user can retry
+  async function fetchReport(id, retries = 3) {
+    for (let i = 0; i < retries; i++) {
+      try {
+        const reportData = await getCaseReport(id, 'json');
+        store.getState().setReport(reportData);
+        return;
+      } catch (err) {
+        console.warn(`Report fetch attempt ${i + 1}/${retries} failed:`, err.message);
+        if (i < retries - 1) await new Promise((r) => setTimeout(r, 2000));
+      }
     }
+    // All retries failed — set error so user sees something
+    store.getState().setFailed('Report generated but could not be fetched. Check your connection and refresh.');
   }
 
   // ── Deep dive ──────────────────────────────────────────────────
