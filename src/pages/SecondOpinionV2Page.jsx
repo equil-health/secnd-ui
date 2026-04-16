@@ -137,17 +137,14 @@ export default function SecondOpinionV2Page() {
   }
 
   function startPolling(id) {
-    let consecutiveErrors = 0;
     pollRef.current = setInterval(async () => {
       try {
         const data = await getCaseStatus(id);
-        consecutiveErrors = 0; // Reset on success
         store.getState().updateStatus(data);
 
         if (data.status === 'phase_a_complete') {
           clearInterval(pollRef.current);
           clearInterval(elapsedRef.current);
-          // Close SSE if still open — polling won the race
           sseRef.current?.close?.();
           sseRef.current = null;
           store.getState().phaseAComplete();
@@ -166,15 +163,10 @@ export default function SecondOpinionV2Page() {
           store.getState().setFailed(data.error);
         }
       } catch (err) {
-        consecutiveErrors++;
-        console.warn(`Poll error ${consecutiveErrors}:`, err.message);
-        if (consecutiveErrors >= 10) {
-          clearInterval(pollRef.current);
-          clearInterval(elapsedRef.current);
-          store.getState().setFailed('Lost connection to GPU pod. Refresh the page to check if your report completed.');
-        }
+        // Transient tunnel errors — keep polling, don't give up
+        console.warn('Poll error (will retry):', err.message);
       }
-    }, 2000);
+    }, 3000);
   }
 
   async function fetchReport(id, retries = 3) {
