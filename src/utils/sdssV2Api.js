@@ -9,13 +9,14 @@ const USE_MOCKS = !GPU_BASE;
 
 async function gpuFetch(path, opts = {}) {
   const url = `${GPU_BASE}${path}`;
+  const { headers: optHeaders, ...restOpts } = opts;
   const res = await fetch(url, {
+    ...restOpts,
     headers: {
       'Content-Type': 'application/json',
       'ngrok-skip-browser-warning': 'true',
-      ...opts.headers,
+      ...optHeaders,
     },
-    ...opts,
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({ detail: res.statusText }));
