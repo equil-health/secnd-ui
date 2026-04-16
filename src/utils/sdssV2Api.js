@@ -370,8 +370,25 @@ export function streamCaseStatus(caseId) {
 export async function getCaseReport(caseId, format = 'json') {
   if (USE_MOCKS) {
     await mockDelay(100);
-    if (format === 'json') return { ...MOCK_REPORT_JSON, case_id: caseId };
-    return MOCK_REPORT_MD;
+    const c = mockCases[caseId];
+    const isV2 = c?.phaseBStatus === 'complete';
+    if (format === 'json') {
+      return {
+        ...MOCK_REPORT_JSON,
+        case_id: caseId,
+        version: isV2 ? 2 : 1,
+        is_provisional: !isV2,
+        markdown: isV2
+          ? MOCK_REPORT_MD.replace(
+              '_📋 **Provisional Verified Report — Deep Literature Research Pending.**_',
+              '_📋 **Verified Report v2 — Deep Literature Research Complete.**_'
+            ) + '\n\n---\n\n## 9. STORM Deep Research Summary\n\nAutoimmune hepatitis (AIH) is a chronic inflammatory liver disease characterised by interface hepatitis, hypergammaglobulinaemia, and circulating autoantibodies. Type 1 AIH (positive ANA/ASMA) accounts for approximately 80% of cases and typically responds to immunosuppressive therapy.\n\n**Key findings from deep literature review:**\n\n- **Simplified diagnostic criteria (IAIHG 2008):** ANA/ASMA ≥1:40 (1 point), IgG > ULN (1 point), liver histology compatible (1 point), absence of viral hepatitis (1 point). Score ≥6 = probable AIH. This patient scores ≥6 based on serology alone.\n- **AFP in AIH:** Mild AFP elevation (< 100 ng/mL) is seen in 20-30% of AIH patients with active inflammation and does not independently predict hepatocellular carcinoma. However, the 4cm liver lesion warrants independent evaluation.\n- **IgG4-RD overlap:** Up to 10% of presumed AIH cases show elevated IgG4 and respond differently to standard therapy. IgG4 subclass testing is critical before treatment initiation.\n- **Treatment hold rationale confirmed:** Literature strongly supports excluding lymphoma before corticosteroid initiation in patients with hepatic lesions and markedly elevated ferritin, as corticosteroids can produce transient improvement in lymphoproliferative disease, delaying diagnosis by 3-6 months.\n\n*12 sources reviewed, 8 high-quality (Grade A-B), 4 supporting (Grade C).*\n'
+          : MOCK_REPORT_MD,
+      };
+    }
+    return isV2
+      ? MOCK_REPORT_MD.replace('Provisional Verified Report', 'Verified Report v2 — Deep Literature Research Complete')
+      : MOCK_REPORT_MD;
   }
 
   const suffix = format === 'json' ? '?format=json' : '';
