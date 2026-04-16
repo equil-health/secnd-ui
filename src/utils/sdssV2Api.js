@@ -10,7 +10,11 @@ const USE_MOCKS = !GPU_BASE;
 async function gpuFetch(path, opts = {}) {
   const url = `${GPU_BASE}${path}`;
   const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json', ...opts.headers },
+    headers: {
+      'Content-Type': 'application/json',
+      'ngrok-skip-browser-warning': 'true',
+      ...opts.headers,
+    },
     ...opts,
   });
   if (!res.ok) {
@@ -358,9 +362,14 @@ export function streamCaseStatus(caseId) {
     return mock;
   }
 
-  // Real backend emits: 'status', 'report_ready', 'phase_complete', 'error'
-  // (not per-stage events — it polls disk state every 2s)
-  return new EventSource(`${GPU_BASE}/v2/case/${caseId}/status/stream`);
+  // Real backend SSE doesn't work through ngrok free tier (no custom headers
+  // on EventSource, and ngrok shows an interstitial). Return a no-op object
+  // so the caller's polling fallback handles everything.
+  return {
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    close: () => {},
+  };
 }
 
 /**
