@@ -64,7 +64,7 @@ export default function SecondOpinionV2Page() {
       const sse = streamCaseStatus(id);
       sseRef.current = sse;
 
-      // Mock SSE events (per-stage granularity)
+      // Per-stage SSE events (both mock and real backend emit these)
       sse.addEventListener('stage_started', (e) => {
         const data = JSON.parse(e.data);
         store.getState().stageStarted(data.stage);
@@ -72,7 +72,7 @@ export default function SecondOpinionV2Page() {
 
       sse.addEventListener('stage_completed', (e) => {
         const data = JSON.parse(e.data);
-        store.getState().stageCompleted(data.stage, data.duration_ms);
+        store.getState().stageCompleted(data.stage, data.duration_ms || 0);
       });
 
       // Real backend SSE events (disk-poll based, 2s intervals)

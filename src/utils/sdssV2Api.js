@@ -29,9 +29,9 @@ const MOCK_STAGES = [
   { stage: 'p1_medgemma', duration_ms: 4200 },
   { stage: 'guard', duration_ms: 870 },
   { stage: 'threshold_contextualiser', duration_ms: 12 },
-  { stage: 'triplet_extraction', duration_ms: 2100 },
+  { stage: 'extraction', duration_ms: 2100 },
   { stage: 'claim_extraction', duration_ms: 1800 },
-  { stage: 'evidence_pipeline', duration_ms: 3200 },
+  { stage: 'serper', duration_ms: 3200 },
   { stage: 'p2_verify', duration_ms: 1400 },
   { stage: 'synthesis', duration_ms: 2200 },
   { stage: 'treatment_gate', duration_ms: 800 },
@@ -507,26 +507,29 @@ export async function listCases() {
   return res.json();
 }
 
-// Stage display name mapping
+// Stage display name mapping — keys must match backend stage names
 export const STAGE_LABELS = {
   image_analysis: 'Analysing images',
   p1_medgemma: 'Generating differential diagnosis',
   guard: 'Running safety guard',
   threshold_contextualiser: 'Contextualising lab thresholds',
-  triplet_extraction: 'Extracting clinical triplets',
+  extraction: 'Extracting clinical triplets',
   claim_extraction: 'Extracting claims for evidence search',
-  evidence_pipeline: 'Searching medical evidence',
+  serper: 'Searching medical evidence',
   p2_verify: 'Verifying against knowledge graph',
   synthesis: 'Synthesising findings',
   treatment_gate: 'Checking treatment safety',
   differential_completeness: 'Completeness audit',
   report_compiled: 'Compiling report',
   storm: 'Deep literature research (STORM)',
+  // Legacy aliases (mock data compatibility)
+  triplet_extraction: 'Extracting clinical triplets',
+  evidence_pipeline: 'Searching medical evidence',
 };
 
 export const STAGE_ORDER = [
   'image_analysis', 'p1_medgemma', 'guard', 'threshold_contextualiser',
-  'triplet_extraction', 'claim_extraction', 'evidence_pipeline',
+  'extraction', 'claim_extraction', 'serper',
   'p2_verify', 'synthesis', 'treatment_gate', 'differential_completeness',
   'report_compiled',
 ];

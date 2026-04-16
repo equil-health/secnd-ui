@@ -61,7 +61,12 @@ const useSdssV2Store = create((set, get) => ({
 
   updateStatus: (data) => {
     const updates = { status: data.status };
-    if (data.stages_completed) updates.stagesCompleted = data.stages_completed;
+    if (data.stages_completed) {
+      // Normalise: backend may send [{stage, duration_ms}] or ["stage_name"]
+      updates.stagesCompleted = data.stages_completed.map((s) =>
+        typeof s === 'string' ? { stage: s, duration_ms: 0 } : s
+      );
+    }
     if (data.stages_pending) updates.stagesPending = data.stages_pending;
     if (data.current_stage) updates.currentStage = data.current_stage;
     if (data.elapsed_ms != null) updates.elapsedMs = data.elapsed_ms;
