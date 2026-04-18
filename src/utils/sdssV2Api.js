@@ -20,8 +20,23 @@ async function gpuFetch(path, opts = {}) {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({ detail: res.statusText }));
-    const err = new Error(body.detail || body.error || `GPU pod error ${res.status}`);
+    // 503 queue_full shape: detail = {error, message, queue_depth}
+    const detail = body.detail;
+    let message;
+    let queueDepth = null;
+    if (detail && typeof detail === 'object') {
+      message = detail.message || detail.error || `GPU pod error ${res.status}`;
+      queueDepth = detail.queue_depth || null;
+    } else {
+      message = detail || body.error || `GPU pod error ${res.status}`;
+    }
+    const err = new Error(message);
     err.status = res.status;
+    err.queueDepth = queueDepth;
+    err.retryAfter = parseInt(res.headers.get('Retry-After'), 10) || null;
+    if (res.status === 503 && (detail?.error === 'queue_full' || queueDepth)) {
+      err.code = 'queue_full';
+    }
     throw err;
   }
   return res;
@@ -194,6 +209,19 @@ function mockDelay(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+// Bounded mock executor: mirrors backend (max_workers=2, queue_max=8).
+// Flip these for manual 503 testing — set window.__MOCK_QUEUE_FULL = true
+// in the browser console to force the next startCase to reject with 503.
+const MOCK_MAX_WORKERS = 2;
+const MOCK_QUEUE_MAX = 8;
+const MOCK_QUEUED_HOLD_MS = 1500; // simulate `queued` before pickup
+
+function mockInFlight() {
+  return Object.values(mockCases).filter(
+    (c) => c.status === 'queued' || c.status === 'running_phase_a' || c.status === 'running_phase_b',
+  ).length;
+}
+
 function createMockCase(caseText, mode) {
   const id = `mock-${Date.now().toString(36)}`;
   const now = Date.now();
@@ -202,27 +230,35 @@ function createMockCase(caseText, mode) {
     caseText,
     mode,
     startedAt: now,
-    status: 'running_phase_a',
+    status: 'queued',
     stageIndex: 0,
     phaseADone: false,
     phaseBStatus: null,
   };
-  // Simulate stages advancing
-  let delay = 0;
-  MOCK_STAGES.forEach((s, i) => {
-    delay += 800 + Math.random() * 400; // ~1s per stage
-    setTimeout(() => {
-      const c = mockCases[id];
-      if (c) {
-        c.stageIndex = i + 1;
-        if (i === MOCK_STAGES.length - 1) {
-          c.status = 'phase_a_complete';
-          c.phaseADone = true;
+
+  // After a short hold in `queued`, flip to running_phase_a and advance stages.
+  setTimeout(() => {
+    const c = mockCases[id];
+    if (!c) return;
+    c.status = 'running_phase_a';
+    c.startedAt = Date.now();
+    let delay = 0;
+    MOCK_STAGES.forEach((s, i) => {
+      delay += 800 + Math.random() * 400;
+      setTimeout(() => {
+        const cc = mockCases[id];
+        if (cc) {
+          cc.stageIndex = i + 1;
+          if (i === MOCK_STAGES.length - 1) {
+            cc.status = 'phase_a_complete';
+            cc.phaseADone = true;
+          }
         }
-      }
-    }, delay);
-  });
-  return { id, totalDelay: delay };
+      }, delay);
+    });
+  }, MOCK_QUEUED_HOLD_MS);
+
+  return { id };
 }
 
 // ── Exported API functions ───────────────────────────────────────
@@ -234,10 +270,26 @@ function createMockCase(caseText, mode) {
 export async function startCase({ caseText, mode = 'standard', patientContext, images }) {
   if (USE_MOCKS) {
     await mockDelay(200);
+    const inFlight = mockInFlight();
+    const force503 = typeof window !== 'undefined' && window.__MOCK_QUEUE_FULL === true;
+    if (force503 || inFlight >= MOCK_MAX_WORKERS + MOCK_QUEUE_MAX) {
+      const err = new Error('SDSS is at maximum capacity. Retry after current cases complete.');
+      err.status = 503;
+      err.code = 'queue_full';
+      err.retryAfter = 60;
+      err.queueDepth = {
+        in_flight: inFlight,
+        max_workers: MOCK_MAX_WORKERS,
+        queue_max: MOCK_QUEUE_MAX,
+        capacity_remaining: 0,
+        shutting_down: false,
+      };
+      throw err;
+    }
     const { id } = createMockCase(caseText, mode);
     return {
       case_id: id,
-      status: 'running_phase_a',
+      status: 'queued',
       started_at: new Date().toISOString(),
       phase_a_target_latency_s: 180,
       phase_a_hard_timeout_s: 360,
@@ -301,6 +353,24 @@ export async function getCaseStatus(caseId) {
         treatment_holds_count: 1,
         completeness_diagnoses_added: 1,
         primary_diagnosis: 'autoimmune hepatitis',
+      };
+    }
+
+    if (c.status === 'queued') {
+      const inFlight = mockInFlight();
+      return {
+        case_id: caseId,
+        status: 'queued',
+        stages_completed: [],
+        stages_pending: MOCK_STAGES.map((s) => s.stage),
+        elapsed_ms: Date.now() - c.startedAt,
+        queue_info: {
+          in_flight: inFlight,
+          max_workers: MOCK_MAX_WORKERS,
+          queue_max: MOCK_QUEUE_MAX,
+          capacity_remaining: MOCK_MAX_WORKERS + MOCK_QUEUE_MAX - inFlight,
+          shutting_down: false,
+        },
       };
     }
 
@@ -418,19 +488,26 @@ export async function triggerDeepDive(caseId) {
     const c = mockCases[caseId];
     if (!c?.phaseADone) throw Object.assign(new Error('Phase A not complete'), { status: 409 });
 
-    c.phaseBStatus = 'running';
+    c.phaseBStatus = 'queued';
     c.phaseBStarted = Date.now();
-    c.status = 'running_phase_b';
+    c.status = 'queued';
 
-    // Simulate Phase B completion after ~8s
+    // After short hold, flip to running_phase_b, then complete ~8s later
     setTimeout(() => {
-      c.phaseBStatus = 'complete';
-      c.status = 'phase_b_complete';
-    }, 8000);
+      if (!mockCases[caseId]) return;
+      mockCases[caseId].phaseBStatus = 'running';
+      mockCases[caseId].status = 'running_phase_b';
+      setTimeout(() => {
+        const cc = mockCases[caseId];
+        if (!cc) return;
+        cc.phaseBStatus = 'complete';
+        cc.status = 'phase_b_complete';
+      }, 8000);
+    }, MOCK_QUEUED_HOLD_MS);
 
     return {
       case_id: caseId,
-      status: 'running_phase_b',
+      status: 'queued',
       started_at: new Date().toISOString(),
       phase_b_target_latency_s: 180,
     };

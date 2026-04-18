@@ -22,6 +22,9 @@ export default function SecondOpinionV2Page() {
   const currentStage = useSdssV2Store((s) => s.currentStage);
   const elapsedMs = useSdssV2Store((s) => s.elapsedMs);
   const queuePosition = useSdssV2Store((s) => s.queuePosition);
+  const queueInfo = useSdssV2Store((s) => s.queueInfo);
+  const retryAfter = useSdssV2Store((s) => s.retryAfter);
+  const lastSubmissionArgs = useSdssV2Store((s) => s.lastSubmissionArgs);
   const report = useSdssV2Store((s) => s.report);
   const error = useSdssV2Store((s) => s.error);
   const auditOpen = useSdssV2Store((s) => s.auditOpen);
@@ -40,14 +43,25 @@ export default function SecondOpinionV2Page() {
   // ── Submit case ────────────────────────────────────────────────
   const handleSubmit = useCallback(async ({ caseText, mode, patientContext, images }) => {
     store.getState().reset();
-    store.setState({ status: 'submitting' });
+    store.setState({ status: 'submitting', lastSubmissionArgs: { caseText, mode, patientContext, images } });
 
     try {
       const result = await startCase({ caseText, mode, patientContext, images });
-      store.getState().startCase(result.case_id, caseText, mode);
+      // Backend now returns status="queued"; worker flips to running_phase_a
+      // when it picks up the task. Render progress for both states.
+      store.getState().startCase(result.case_id, caseText, mode, result.status || 'queued');
       startStatusTracking(result.case_id);
     } catch (err) {
-      store.getState().setFailed(err.message);
+      if (err.code === 'queue_full') {
+        store.getState().setQueueFull({
+          message: err.message,
+          queueInfo: err.queueDepth,
+          retryAfter: err.retryAfter,
+          args: { caseText, mode, patientContext, images },
+        });
+      } else {
+        store.getState().setFailed(err.message);
+      }
     }
   }, []);
 
@@ -188,13 +202,16 @@ export default function SecondOpinionV2Page() {
   const handleDeepDive = useCallback(async () => {
     if (!caseId) return;
     try {
-      await triggerDeepDive(caseId);
-      store.getState().startPhaseB();
-      // Start polling for Phase B completion
+      const result = await triggerDeepDive(caseId);
+      // Backend returns status="queued" — the worker flips to running_phase_b
+      // when it picks up. Treat both as "Phase B in progress" for the UI.
+      store.setState({ status: result?.status === 'queued' ? 'queued' : 'running_phase_b', phaseBElapsedMs: 0 });
       startPolling(caseId);
     } catch (err) {
-      // 409 means already running or complete — update status
-      if (err.status === 409) {
+      if (err.code === 'queue_full') {
+        // Backend rolled state back to phase_a_complete; tell the user to retry.
+        alert(err.message + (err.retryAfter ? ` Retry in ~${err.retryAfter}s.` : ''));
+      } else if (err.status === 409) {
         const data = await getCaseStatus(caseId);
         store.getState().updateStatus(data);
       }
@@ -212,12 +229,14 @@ export default function SecondOpinionV2Page() {
   // ── Render ─────────────────────────────────────────────────────
   const isIdle = status === 'idle';
   const isSubmitting = status === 'submitting';
+  const isQueued = status === 'queued';
   const isRunningA = status === 'running_phase_a';
   const hasReport = !!report;
   const isFailed = status === 'failed';
+  const isQueueFull = status === 'queue_full';
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
@@ -274,14 +293,55 @@ export default function SecondOpinionV2Page() {
               </div>
             )}
 
-            {/* Running Phase A: show progress */}
-            {isRunningA && (
+            {/* Queued or running Phase A: show progress timeline */}
+            {(isQueued || isRunningA) && (
               <PhaseAProgress
                 stagesCompleted={stagesCompleted}
                 currentStage={currentStage}
                 elapsedMs={elapsedMs}
                 queuePosition={queuePosition}
+                queueInfo={queueInfo}
+                queued={isQueued}
               />
+            )}
+
+            {/* Queue full — friendly 503 with retry */}
+            {isQueueFull && (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4">
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-amber-800">System at capacity</p>
+                    <p className="text-xs text-amber-700 mt-1">
+                      {error || 'SDSS is processing the maximum number of cases.'}
+                    </p>
+                    {queueInfo && (
+                      <p className="text-[10px] text-amber-600 mt-1">
+                        {queueInfo.in_flight} case{queueInfo.in_flight === 1 ? '' : 's'} in progress
+                        {queueInfo.max_workers ? ` (${queueInfo.max_workers} worker${queueInfo.max_workers === 1 ? '' : 's'}, queue ${queueInfo.queue_max})` : ''}.
+                        {retryAfter ? ` Retry in ~${retryAfter}s.` : ''}
+                      </p>
+                    )}
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        onClick={() => lastSubmissionArgs && handleSubmit(lastSubmissionArgs)}
+                        disabled={!lastSubmissionArgs}
+                        className="px-3 py-1.5 text-xs font-medium bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-lg transition disabled:opacity-50"
+                      >
+                        Retry submission
+                      </button>
+                      <button
+                        onClick={handleNewCase}
+                        className="px-3 py-1.5 text-xs font-medium text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 transition"
+                      >
+                        Start over
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
 
             {/* Failed */}

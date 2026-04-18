@@ -8,10 +8,12 @@ import { create } from 'zustand';
 const useSdssV2Store = create((set, get) => ({
   // ── Case state ─────────────────────────────────────────────────
   caseId: null,
-  status: 'idle', // idle | submitting | running_phase_a | phase_a_complete | running_phase_b | phase_b_complete | failed
+  status: 'idle', // idle | submitting | queue_full | queued | running_phase_a | phase_a_complete | running_phase_b | phase_b_complete | failed
   caseText: '',
   mode: 'standard',
   error: null,
+  queueInfo: null, // { in_flight, max_workers, queue_max, capacity_remaining }
+  lastSubmissionArgs: null, // kept so UI can offer one-click retry after 503
 
   // ── Phase A progress ───────────────────────────────────────────
   stagesCompleted: [],  // [{ stage, duration_ms }]
@@ -39,17 +41,18 @@ const useSdssV2Store = create((set, get) => ({
 
   // ── Actions ────────────────────────────────────────────────────
 
-  startCase: (caseId, caseText, mode) => set({
+  startCase: (caseId, caseText, mode, status = 'queued') => set({
     caseId,
     caseText,
     mode,
-    status: 'running_phase_a',
+    status,
     error: null,
     stagesCompleted: [],
     stagesPending: [],
     currentStage: null,
     elapsedMs: 0,
     queuePosition: 0,
+    queueInfo: null,
     report: null,
     reportVersion: 0,
     phaseBElapsedMs: 0,
@@ -71,6 +74,7 @@ const useSdssV2Store = create((set, get) => ({
     if (data.current_stage) updates.currentStage = data.current_stage;
     if (data.elapsed_ms != null) updates.elapsedMs = data.elapsed_ms;
     if (data.queue_position != null) updates.queuePosition = data.queue_position;
+    if (data.queue_info) updates.queueInfo = data.queue_info;
     if (data.report_version) updates.reportVersion = data.report_version;
     if (data.phase_b_elapsed_ms != null) updates.phaseBElapsedMs = data.phase_b_elapsed_ms;
     if (data.error) updates.error = data.error;
@@ -97,6 +101,14 @@ const useSdssV2Store = create((set, get) => ({
   phaseBComplete: (newVersion) => set({ status: 'phase_b_complete', reportVersion: newVersion || 2 }),
 
   setFailed: (error) => set({ status: 'failed', error }),
+
+  setQueueFull: ({ message, queueInfo, retryAfter, args }) => set({
+    status: 'queue_full',
+    error: message,
+    queueInfo: queueInfo || null,
+    retryAfter: retryAfter || null,
+    lastSubmissionArgs: args || null,
+  }),
 
   // Audit
   setAudit: (audit) => set({ audit }),
@@ -138,6 +150,9 @@ const useSdssV2Store = create((set, get) => ({
     currentStage: null,
     elapsedMs: 0,
     queuePosition: 0,
+    queueInfo: null,
+    lastSubmissionArgs: null,
+    retryAfter: null,
     report: null,
     reportVersion: 0,
     phaseBElapsedMs: 0,
