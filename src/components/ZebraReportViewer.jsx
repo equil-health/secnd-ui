@@ -379,7 +379,7 @@ function Stat({ label, value, warn, small }) {
 /* ── Analysis Parser ──────────────────────────────────────────── */
 
 /**
- * Parse the MedGemma zebra analysis text into structured sections.
+ * Parse the zebra-mode analysis text into structured sections.
  * Looks for numbered headers like "1. CASE SUMMARY", "2. COMMON DIAGNOSES...",
  * "3. ZEBRA HYPOTHESES", etc.
  */

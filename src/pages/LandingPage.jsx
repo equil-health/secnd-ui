@@ -213,7 +213,12 @@ export default function LandingPage() {
               Grounded in
             </div>
             <div className="flex flex-wrap gap-2">
-              {['PrimeKG', 'OpenAlex', 'STORM', 'ICMR', 'MedGemma'].map((src) => (
+              {[
+                'Biomedical knowledge graph',
+                'Peer-reviewed literature',
+                'Autonomous deep research',
+                'Specialty clinical guidelines',
+              ].map((src) => (
                 <span
                   key={src}
                   className="text-[11px] font-medium text-slate-600 border border-slate-200 bg-white rounded-md px-2 py-1"

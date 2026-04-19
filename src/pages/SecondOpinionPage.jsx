@@ -645,9 +645,9 @@ function ClinicalReport({ result, mode, taskId, onReset, showFullReasoning, setS
               <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
               </svg>
-              PrimeKG-Verified Differential
+              Knowledge-Graph-Verified Differential
             </h2>
-            <p className="text-xs text-gray-500 mb-4">Each hypothesis verified against 12.9M PrimeKG relationships. Ranked by KG structural support.</p>
+            <p className="text-xs text-gray-500 mb-4">Each hypothesis verified against 12.9M biomedical relationships. Ranked by structural support.</p>
 
             <div className="space-y-4">
               {dxList.map((dx, i) => (
@@ -863,7 +863,7 @@ function ExecutiveVerdictBanner({ result }) {
             <p className="text-xs font-bold uppercase tracking-widest opacity-80">Executive Verdict</p>
             <p className="text-lg font-bold mt-1 leading-snug">{verdict.text}</p>
             {supportNote && (
-              <p className="text-sm opacity-80 mt-1.5">{supportNote} — PrimeKG verification</p>
+              <p className="text-sm opacity-80 mt-1.5">{supportNote} — knowledge-graph verification</p>
             )}
           </div>
         </div>
@@ -1018,7 +1018,7 @@ function EvidenceBaseSection({ result, showDeepDive, setShowDeepDive, showFullRe
               <svg className="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
               </svg>
-              <span className="text-xs text-purple-600">STORM Deep Research</span>
+              <span className="text-xs text-purple-600">Deep Literature Research</span>
             </div>
           )}
         </div>
@@ -1116,7 +1116,7 @@ function EvidenceBaseSection({ result, showDeepDive, setShowDeepDive, showFullRe
             </span>
             <div className="flex-1">
               <span className="text-sm font-bold text-gray-900">Literature Deep-Dive</span>
-              <span className="text-xs text-gray-400 ml-2">STORM-generated literature synthesis</span>
+              <span className="text-xs text-gray-400 ml-2">Autonomous literature synthesis</span>
             </div>
             <svg className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${showDeepDive ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />

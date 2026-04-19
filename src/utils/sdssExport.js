@@ -266,7 +266,7 @@ export function exportSdssPDF(result, mode = 'standard') {
   // ── SECTION A — MedGemma Clinical Analysis ──
   const p1Text = result.p1_clean || result.p1_differential;
   if (p1Text) {
-    sectionTitle('Section A — MedGemma Clinical Analysis');
+    sectionTitle('Section A — Clinical Analysis');
     const p1Lines = stripMarkdown(p1Text).split('\n').filter(Boolean);
     p1Lines.forEach(line => {
       const trimmed = line.trim();
@@ -294,7 +294,7 @@ export function exportSdssPDF(result, mode = 'standard') {
     doc.setFontSize(9);
     doc.setFont('helvetica', 'italic');
     doc.setTextColor(120, 120, 120);
-    doc.text('Each hypothesis verified against PrimeKG knowledge graph:', margin, y);
+    doc.text('Each hypothesis verified against the biomedical knowledge graph:', margin, y);
     y += 6;
 
     dxList.forEach((dx, i) => {
@@ -588,7 +588,7 @@ export async function exportSdssDOCX(result, mode = 'standard') {
   // ── SECTION A — MedGemma Clinical Analysis ──
   const p1Text = result.p1_clean || result.p1_differential;
   if (p1Text) {
-    children.push(new Paragraph({ children: [new TextRun({ text: 'Section A — MedGemma Clinical Analysis', bold: true, size: 26 })], heading: HeadingLevel.HEADING_1, spacing: { before: 200, after: 100 } }));
+    children.push(new Paragraph({ children: [new TextRun({ text: 'Section A — Clinical Analysis', bold: true, size: 26 })], heading: HeadingLevel.HEADING_1, spacing: { before: 200, after: 100 } }));
     stripMarkdown(p1Text).split('\n').filter(Boolean).forEach(line => {
       const trimmed = line.trim();
       if (!trimmed) return;
@@ -603,7 +603,7 @@ export async function exportSdssDOCX(result, mode = 'standard') {
   // ── SECTION B — Knowledge Graph Verification ──
   if (dxList.length > 0) {
     children.push(new Paragraph({ children: [new TextRun({ text: 'Section B — Knowledge Graph Verification', bold: true, size: 26 })], heading: HeadingLevel.HEADING_1, spacing: { before: 200, after: 60 } }));
-    children.push(new Paragraph({ children: [new TextRun({ text: 'Each hypothesis verified against PrimeKG knowledge graph:', italics: true, size: 18, color: '6B7280' })], spacing: { after: 100 } }));
+    children.push(new Paragraph({ children: [new TextRun({ text: 'Each hypothesis verified against the biomedical knowledge graph:', italics: true, size: 18, color: '6B7280' })], spacing: { after: 100 } }));
 
     dxList.forEach((dx, i) => {
       const isCritical = dx.critical_flags?.length > 0;
@@ -914,12 +914,12 @@ export function exportSdssHTML(result, mode = 'standard') {
   // SECTION A — MedGemma Clinical Analysis
   const p1TextHtml = result.p1_clean || result.p1_differential;
   if (p1TextHtml) {
-    html += `<div class="section"><h2>Section A — MedGemma Clinical Analysis</h2><div class="synthesis">${stripMarkdown(p1TextHtml)}</div></div>`;
+    html += `<div class="section"><h2>Section A — Clinical Analysis</h2><div class="synthesis">${stripMarkdown(p1TextHtml)}</div></div>`;
   }
 
   // SECTION B — Knowledge Graph Verification
   if (dxList.length > 0) {
-    html += `<div class="section"><h2>Section B — Knowledge Graph Verification</h2><p style="font-size:12px;color:#6b7280;margin-bottom:16px;font-style:italic">Each hypothesis verified against PrimeKG knowledge graph</p>`;
+    html += `<div class="section"><h2>Section B — Knowledge Graph Verification</h2><p style="font-size:12px;color:#6b7280;margin-bottom:16px;font-style:italic">Each hypothesis verified against the biomedical knowledge graph</p>`;
     dxList.forEach((dx, i) => {
       const isCritical = dx.critical_flags?.length > 0;
       const supportText = dx.kg_support || '';

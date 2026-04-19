@@ -2,15 +2,15 @@ import { useState } from 'react';
 
 const STAGE_LABELS = {
   image_analysis: 'Image Analysis',
-  p1_medgemma: 'P1 — MedGemma Differential',
+  p1_medgemma: 'Initial Differential',
   guard: 'Hallucination Guard',
   claim_extraction: 'Claim Extraction',
-  serper: 'Serper Evidence Search',
-  openalex: 'OpenAlex Citation Verification',
+  serper: 'Evidence Search',
+  openalex: 'Citation Verification',
   evidence_synthesis: 'Evidence Synthesis',
-  storm: 'STORM Deep Research',
+  storm: 'Deep Literature Research',
   extraction: 'Triplet Extraction',
-  p2_verify: 'P2 — KG Verification',
+  p2_verify: 'Knowledge Graph Verification',
   synthesis: 'Final Synthesis',
   final: 'Pipeline Summary',
 };
