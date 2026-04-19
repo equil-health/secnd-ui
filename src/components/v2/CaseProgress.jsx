@@ -106,9 +106,7 @@ export default function CaseProgress({
         <div className="px-5 py-4 pl-6">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Submitted Case
-              </span>
+              <span className="eyebrow text-slate-500">Submitted Case</span>
               {pcBits.length > 0 && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-600">
                   {pcBits.map((b, i) => (
@@ -122,11 +120,11 @@ export default function CaseProgress({
                 </span>
               )}
             </div>
-            <span className="text-[10px] text-slate-400 tabular-nums font-mono">
+            <span className="stat-value text-[11px] text-slate-400">
               {formatElapsed(elapsedMs)}
             </span>
           </div>
-          <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+          <p className="text-[15px] text-slate-800 whitespace-pre-wrap leading-relaxed">
             {truncate(caseText)}
           </p>
         </div>
@@ -158,11 +156,14 @@ export default function CaseProgress({
             <div className="flex-1 min-w-0">
               <div
                 key={phrase}
-                className="text-xl font-semibold tracking-tight text-white"
-                style={{ animation: 'fadeSlide 400ms ease-out' }}
+                className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-white italic"
+                style={{
+                  animation: 'fadeSlide 400ms ease-out',
+                  fontVariationSettings: "'SOFT' 40, 'opsz' 72, 'wght' 600",
+                }}
               >
                 {phrase}
-                <span className="inline-block ml-1 text-indigo-400 animate-pulse">…</span>
+                <span className="inline-block ml-1 text-indigo-400 animate-pulse not-italic">…</span>
               </div>
               {queued ? (
                 <div className="text-[11px] font-medium text-amber-300 mt-1.5">

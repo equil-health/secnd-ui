@@ -3,8 +3,57 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    /* Variable-font optical features on Inter look sharper with these. */
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
   body {
-    @apply antialiased;
+    @apply antialiased font-sans text-slate-900;
+    /* Ligatures + contextual alternates — free typographic polish. */
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01';
+  }
+
+  /* Serif display class. Applied via `.font-display`. When Fraunces is
+     being used at big sizes we want the display optical size (opsz 144)
+     and a hint of softness so it doesn't feel brittle. */
+  .font-display {
+    font-family: 'Fraunces', ui-serif, Georgia, serif;
+    font-optical-sizing: auto;
+    font-variation-settings: 'SOFT' 30, 'opsz' 144;
+  }
+
+  /* When display type is huge, tighten further and up the weight. */
+  .display-hero {
+    @apply font-display font-extrabold tracking-display-tight;
+    font-variation-settings: 'SOFT' 30, 'opsz' 144, 'wght' 800;
+    line-height: 1.02;
+  }
+
+  /* Card/section titles — serif but a shade less extreme. */
+  .display-title {
+    @apply font-display font-bold tracking-tight;
+    font-variation-settings: 'SOFT' 40, 'opsz' 72, 'wght' 700;
+    line-height: 1.15;
+  }
+
+  /* Eyebrow labels: the small-caps-ish uppercase label above headlines. */
+  .eyebrow {
+    @apply font-sans font-bold uppercase;
+    letter-spacing: 0.22em;
+    font-size: 0.625rem; /* 10px */
+    line-height: 1;
+  }
+
+  /* Stat values — monospace with tabular figures for vertical alignment. */
+  .stat-value {
+    @apply font-mono font-semibold tabular-nums;
+    font-feature-settings: 'tnum' 1, 'lnum' 1;
+  }
+
+  /* Tighten default heading rhythm so the serif sits nicely against body. */
+  h1, h2, h3, h4 {
+    @apply tracking-tight;
   }
 }
 

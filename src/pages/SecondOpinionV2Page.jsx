@@ -292,13 +292,11 @@ export default function SecondOpinionV2Page() {
             {(isIdle || isSubmitting) && (
               <div>
                 <div className="mb-8">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-indigo-600 mb-3">
-                    New Case
-                  </div>
-                  <h2 className="text-3xl font-bold tracking-tight text-slate-900 leading-tight">
+                  <div className="eyebrow text-indigo-600 mb-3">New Case</div>
+                  <h2 className="display-hero text-4xl sm:text-5xl text-slate-900">
                     Describe the case.
                   </h2>
-                  <p className="mt-3 text-sm text-slate-600 leading-relaxed max-w-xl">
+                  <p className="mt-4 text-sm text-slate-600 leading-relaxed max-w-xl">
                     We'll generate a differential, verify against a biomedical knowledge graph, cross-check the literature, and compile a report you can act on.
                   </p>
                 </div>

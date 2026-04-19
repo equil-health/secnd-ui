@@ -152,13 +152,13 @@ export default function LandingPage() {
             </span>
           </div>
 
-          <h1 className="animate-fade-in-up text-4xl sm:text-6xl font-bold tracking-tight text-white max-w-3xl leading-[1.05]">
+          <h1 className="animate-fade-in-up display-hero text-5xl sm:text-7xl text-white max-w-4xl">
             Evidence-backed clinical reasoning,
             <span className="block text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-indigo-400 to-emerald-400">
               verified against 12.9M sources.
             </span>
           </h1>
-          <p className="animate-fade-in-up animate-delay-100 mt-5 max-w-xl text-base sm:text-lg text-slate-300 leading-relaxed">
+          <p className="animate-fade-in-up animate-delay-100 mt-6 max-w-xl text-base sm:text-lg text-slate-300 leading-relaxed">
             A second-opinion engine for clinicians. Every conclusion grounded in a biomedical knowledge graph, stress-tested against current literature, and gated by explicit treatment-safety rules.
           </p>
         </div>
@@ -169,15 +169,13 @@ export default function LandingPage() {
         {/* Left column — sticky rail */}
         <aside className="space-y-8 lg:sticky lg:top-24 lg:self-start">
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-indigo-600 mb-3">
-              Start here
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 leading-tight">
+            <div className="eyebrow text-indigo-600 mb-3">Start here</div>
+            <h2 className="display-title text-3xl sm:text-4xl text-slate-900">
               Pick a workflow.
               <br />
-              <span className="text-slate-500 font-medium">We handle the rest.</span>
+              <span className="text-slate-500 font-normal italic">We handle the rest.</span>
             </h2>
-            <p className="mt-4 text-sm text-slate-600 leading-relaxed">
+            <p className="mt-5 text-sm text-slate-600 leading-relaxed">
               Five modes, one engine. Start with a full verified case, dive into literature, or chat through a clinical question.
             </p>
           </div>
@@ -200,7 +198,7 @@ export default function LandingPage() {
             {SIGNAL_STATS.map((stat) => (
               <div key={stat.label} className="flex items-baseline justify-between gap-4">
                 <dt className="text-[11px] text-slate-500 leading-snug">{stat.label}</dt>
-                <dd className="text-lg font-bold tracking-tight text-slate-900 tabular-nums whitespace-nowrap">
+                <dd className="stat-value text-xl text-slate-900 whitespace-nowrap">
                   {stat.value}
                 </dd>
               </div>
@@ -209,9 +207,7 @@ export default function LandingPage() {
 
           {/* Trust marks */}
           <div className="border-t border-slate-200 pt-6">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400 mb-3">
-              Grounded in
-            </div>
+            <div className="eyebrow text-slate-400 mb-3">Grounded in</div>
             <div className="flex flex-wrap gap-2">
               {[
                 'Biomedical knowledge graph',
@@ -276,20 +272,18 @@ function PrimaryCard({ feature, expanded, onToggle, onNavigate }) {
           className="w-full text-left p-7 sm:p-8"
         >
           <div className="flex items-start justify-between gap-4 mb-4">
-            <div className="flex items-center gap-2.5">
-              <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-slate-900 text-white">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-slate-900 text-white">
                 {feature.icon}
               </span>
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-indigo-600">
-                  {feature.eyebrow}
-                </div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+                <div className="eyebrow text-indigo-600">{feature.eyebrow}</div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <h3 className="display-title text-2xl sm:text-3xl text-slate-900">
                     {feature.title}
                   </h3>
                   {feature.badge && (
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
                       {feature.badge}
                     </span>
                   )}
@@ -305,7 +299,7 @@ function PrimaryCard({ feature, expanded, onToggle, onNavigate }) {
             </span>
           </div>
 
-          <p className="text-base font-semibold text-slate-900 leading-snug mb-2">
+          <p className="font-display text-lg sm:text-xl font-semibold text-slate-900 leading-snug mb-2 italic">
             {feature.tagline}
           </p>
           <p className="text-sm text-slate-600 leading-relaxed max-w-xl">
@@ -420,7 +414,7 @@ function SecondaryCard({ feature, onClick, delayClass }) {
         )}
       </div>
 
-      <h3 className="text-base font-bold tracking-tight text-slate-900 mb-1">
+      <h3 className="display-title text-lg text-slate-900 mb-1">
         {feature.title}
       </h3>
       <p className="text-xs text-slate-600 leading-relaxed mb-3">

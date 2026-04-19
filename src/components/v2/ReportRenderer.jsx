@@ -123,14 +123,14 @@ function VerdictSection({ body, title }) {
       <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${vc.accent}`} />
       <div className="px-5 py-4 pl-6">
         <div className="flex items-center gap-2 mb-3">
-          <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase ${vc.badge}`}>
+          <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-[0.18em] uppercase ${vc.badge}`}>
             {verdict || 'Verdict'}
           </span>
-          <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+          <span className="eyebrow text-slate-500">
             {getSectionLabel(title)}
           </span>
         </div>
-        <div className="text-sm text-slate-700 leading-relaxed">
+        <div className="text-[15px] text-slate-800 leading-relaxed">
           <FormattedMarkdown content={body} />
         </div>
       </div>
@@ -414,10 +414,10 @@ export default function ReportRenderer({ report }) {
                 </svg>
               </div>
               <div className="leading-tight">
-                <div className="text-[9px] font-semibold uppercase tracking-[0.22em] text-indigo-300">
+                <div className="eyebrow text-indigo-300">
                   Verified · SECND v{version}
                 </div>
-                <div className="text-sm font-bold text-white">Second Opinion Report</div>
+                <div className="display-title text-lg text-white mt-0.5">Second Opinion Report</div>
               </div>
             </div>
             {is_provisional && (
@@ -474,12 +474,12 @@ export default function ReportRenderer({ report }) {
               onClick={() => toggleSection(idx)}
               className="w-full px-5 py-3.5 flex items-center gap-3 hover:bg-slate-50 transition text-left"
             >
-              <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className="flex items-center gap-2.5 flex-1 min-w-0">
                 <span className={`w-1.5 h-1.5 rounded-full ${meta.dot} flex-shrink-0`} />
-                <span className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${meta.text} flex-shrink-0`}>
+                <span className={`eyebrow ${meta.text} flex-shrink-0`}>
                   {meta.mark}
                 </span>
-                <span className="text-sm font-semibold text-slate-900 truncate">{label}</span>
+                <span className="display-title text-base text-slate-900 truncate">{label}</span>
               </div>
               <svg
                 className={`w-4 h-4 text-slate-400 transition-transform flex-shrink-0 ${isCollapsed ? '' : 'rotate-180'}`}

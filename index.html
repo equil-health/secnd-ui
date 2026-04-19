@@ -4,6 +4,23 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SECND Opinion</title>
+
+    <!--
+      Typography system
+      - Fraunces: variable display serif (headlines, card titles, stat values).
+        Axes: wght 100-900, opsz 9-144, SOFT 0-100. We preload the core weights
+        700 / 800 / 900 for display use.
+      - Inter: variable UI sans (body, labels, buttons). Full weight range.
+      - JetBrains Mono: for stats, timings, IDs. 500-600 loaded.
+      Preconnect + display=swap keeps FOUT brief; system fonts carry the
+      first paint, then variable fonts take over.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..900,0..100&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    />
   </head>
   <body class="bg-gray-50 text-gray-900 min-h-screen">
     <div id="root"></div>
