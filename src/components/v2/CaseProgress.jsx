@@ -1,52 +1,44 @@
 import { useEffect, useState, useMemo } from 'react';
 
-// Claude-CLI-style goofy gerunds. Purely whimsical — no reference to
-// the case, medicine, or any internal stage. Just something to watch
-// while the pipeline grinds.
+// Clinical-reasoning gerunds. Describe the kind of cognitive work a
+// thoughtful clinician does during a second opinion — deliberately
+// neutral, no reference to internal stages (no KG, no must-exclude,
+// no evidence tiers). The list leans slightly verbose on purpose so
+// the user reads a cue about care and rigour, not speed.
 const THINKING_PHRASES = [
-  'Perambulating',
-  'Bamboozling',
-  'Flibbertigibbeting',
-  'Noodling',
-  'Kerfuffling',
-  'Discombobulating',
-  'Befuddling',
-  'Hobnobbing',
-  'Galumphing',
-  'Skedaddling',
-  'Confabulating',
-  'Lollygagging',
-  'Whiffling',
-  'Snollygostering',
-  'Boondoggling',
-  'Gallivanting',
-  'Rumpusing',
-  'Wobbulating',
-  'Flummoxing',
-  'Finagling',
-  'Hornswoggling',
-  'Persnicketing',
-  'Wafflestomping',
-  'Tittering',
-  'Dillydallying',
-  'Futzing',
-  'Gobsmacking',
-  'Harrumphing',
-  'Absquatulating',
-  'Kerplunking',
-  'Whomping',
-  'Bumblefussing',
-  'Collywobbling',
-  'Shilly-shallying',
-  'Mollycoddling',
-  'Malarkeying',
-  'Hootenannying',
-  'Ballyhooing',
-  'Higgledy-piggledying',
-  'Cattywampussing',
+  'Reviewing the presentation',
+  'Considering the differential',
+  'Weighing the evidence',
+  'Correlating the findings',
+  'Examining the lab values',
+  'Interpreting the imaging',
+  'Consulting the literature',
+  'Cross-checking guidelines',
+  'Evaluating clinical context',
+  'Assessing likelihood',
+  'Ranking the hypotheses',
+  'Checking for red flags',
+  'Reconciling conflicting data',
+  'Verifying diagnostic criteria',
+  'Considering rare conditions',
+  'Reviewing drug interactions',
+  'Screening for contraindications',
+  'Calibrating confidence',
+  'Looking for overlooked diagnoses',
+  'Revisiting the history',
+  'Examining temporal patterns',
+  'Weighing sensitivity and specificity',
+  'Reviewing comparable case reports',
+  'Assessing pre-test probability',
+  'Consolidating the reasoning',
+  'Drafting the assessment',
+  'Prioritising next investigations',
+  'Reviewing the recommendations',
+  'Checking the reasoning chain',
+  'Finalising the report',
 ];
 
-function useRotatingPhrase(intervalMs = 4500) {
+function useRotatingPhrase(intervalMs = 6000) {
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), intervalMs);
