@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import useSdssV2Store from '../stores/sdssV2Store';
 import { startCase, getCaseStatus, getCaseReport, triggerDeepDive, streamCaseStatus } from '../utils/sdssV2Api';
 import CaseInputForm from '../components/v2/CaseInputForm';
-import PhaseAProgress from '../components/v2/PhaseAProgress';
+import CaseProgress from '../components/v2/CaseProgress';
 import ReportRenderer from '../components/v2/ReportRenderer';
 import DeepDiveButton from '../components/v2/DeepDiveButton';
 import CaseChat from '../components/v2/CaseChat';
 import AuditPanel from '../components/v2/AuditPanel';
 import UserBadge from '../components/UserBadge';
+import { exportV2PDF, exportV2DOCX, exportV2HTML } from '../utils/sdssV2Export';
 
 export default function SecondOpinionV2Page() {
   const navigate = useNavigate();
@@ -18,10 +19,8 @@ export default function SecondOpinionV2Page() {
 
   const caseId = useSdssV2Store((s) => s.caseId);
   const status = useSdssV2Store((s) => s.status);
-  const stagesCompleted = useSdssV2Store((s) => s.stagesCompleted);
-  const currentStage = useSdssV2Store((s) => s.currentStage);
+  const caseText = useSdssV2Store((s) => s.caseText);
   const elapsedMs = useSdssV2Store((s) => s.elapsedMs);
-  const queuePosition = useSdssV2Store((s) => s.queuePosition);
   const queueInfo = useSdssV2Store((s) => s.queueInfo);
   const retryAfter = useSdssV2Store((s) => s.retryAfter);
   const lastSubmissionArgs = useSdssV2Store((s) => s.lastSubmissionArgs);
@@ -293,15 +292,14 @@ export default function SecondOpinionV2Page() {
               </div>
             )}
 
-            {/* Queued or running Phase A: show progress timeline */}
+            {/* Queued or running Phase A: case preview + ruminating card */}
             {(isQueued || isRunningA) && (
-              <PhaseAProgress
-                stagesCompleted={stagesCompleted}
-                currentStage={currentStage}
+              <CaseProgress
+                caseText={caseText}
+                patientContext={lastSubmissionArgs?.patientContext}
                 elapsedMs={elapsedMs}
-                queuePosition={queuePosition}
-                queueInfo={queueInfo}
                 queued={isQueued}
+                queueInfo={queueInfo}
               />
             )}
 
@@ -372,7 +370,7 @@ export default function SecondOpinionV2Page() {
                 <DeepDiveButton status={status} onTrigger={handleDeepDive} />
 
                 {/* Secondary toolbar */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <button
                     onClick={() => store.getState().toggleAudit()}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium transition"
@@ -382,6 +380,27 @@ export default function SecondOpinionV2Page() {
                     </svg>
                     Audit Trail
                   </button>
+                  <div className="flex items-center gap-1 ml-auto">
+                    <span className="text-[10px] text-gray-400 uppercase tracking-wide mr-1">Export</span>
+                    <button
+                      onClick={() => { try { exportV2PDF(report); } catch (e) { alert(e.message); } }}
+                      className="px-2.5 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+                    >
+                      PDF
+                    </button>
+                    <button
+                      onClick={() => { try { exportV2DOCX(report); } catch (e) { alert(e.message); } }}
+                      className="px-2.5 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+                    >
+                      DOCX
+                    </button>
+                    <button
+                      onClick={() => { try { exportV2HTML(report); } catch (e) { alert(e.message); } }}
+                      className="px-2.5 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+                    >
+                      HTML
+                    </button>
+                  </div>
                 </div>
 
                 <ReportRenderer report={report} />
