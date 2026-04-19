@@ -30,19 +30,19 @@ function parseSections(markdown) {
 
 function confidenceStyle(conf) {
   const c = conf?.toLowerCase() || '';
-  if (c === 'high') return { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-300', dot: 'bg-green-500' };
-  if (c === 'moderate') return { bg: 'bg-amber-100', text: 'text-amber-800', border: 'border-amber-300', dot: 'bg-amber-500' };
-  if (c.includes('low')) return { bg: 'bg-red-100', text: 'text-red-800', border: 'border-red-300', dot: 'bg-red-500' };
-  return { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-300', dot: 'bg-gray-400' };
+  if (c === 'high') return { bg: 'bg-emerald-50', text: 'text-emerald-800', border: 'border-emerald-200', dot: 'bg-emerald-500' };
+  if (c === 'moderate') return { bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-200', dot: 'bg-amber-500' };
+  if (c.includes('low')) return { bg: 'bg-red-50', text: 'text-red-800', border: 'border-red-200', dot: 'bg-red-500' };
+  return { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', dot: 'bg-slate-400' };
 }
 
 function verificationStyle(v) {
   const s = v?.toLowerCase() || '';
-  if (s.includes('kg-verified') || s.includes('✓')) return { bg: 'bg-green-50', text: 'text-green-700', icon: '✓', label: 'KG Verified' };
-  if (s.includes('evidence-supported')) return { bg: 'bg-blue-50', text: 'text-blue-700', icon: '◉', label: 'Evidence Supported' };
-  if (s.includes('completeness')) return { bg: 'bg-purple-50', text: 'text-purple-700', icon: '+', label: 'Completeness Added' };
+  if (s.includes('kg-verified') || s.includes('✓')) return { bg: 'bg-emerald-50', text: 'text-emerald-700', icon: '✓', label: 'KG Verified' };
+  if (s.includes('evidence-supported')) return { bg: 'bg-indigo-50', text: 'text-indigo-700', icon: '◉', label: 'Evidence Supported' };
+  if (s.includes('completeness')) return { bg: 'bg-slate-100', text: 'text-slate-700', icon: '+', label: 'Completeness Added' };
   if (s.includes('must-exclude')) return { bg: 'bg-red-50', text: 'text-red-700', icon: '⚠', label: 'Must Exclude' };
-  return { bg: 'bg-gray-50', text: 'text-gray-600', icon: '·', label: v };
+  return { bg: 'bg-slate-50', text: 'text-slate-600', icon: '·', label: v };
 }
 
 // ── Parse differential table from markdown ───────────────────────
@@ -68,22 +68,36 @@ function parseDifferentialTable(body) {
 
 // ── Section icon mapping ─────────────────────────────────────────
 
-const SECTION_ICONS = {
-  '1': { icon: '⚖', color: 'text-indigo-600', bg: 'bg-indigo-50' },       // Executive Verdict
-  '2a': { icon: '🚨', color: 'text-red-600', bg: 'bg-red-50' },           // Critical Safety
-  '2b': { icon: '⛔', color: 'text-red-600', bg: 'bg-red-50' },           // Treatment Hold
-  '3': { icon: '📷', color: 'text-slate-600', bg: 'bg-slate-50' },         // Imaging
-  '4': { icon: '🔬', color: 'text-purple-600', bg: 'bg-purple-50' },       // Differential
-  '5': { icon: '✅', color: 'text-blue-600', bg: 'bg-blue-50' },           // Completeness
-  '6': { icon: '📚', color: 'text-teal-600', bg: 'bg-teal-50' },          // Evidence
-  '7': { icon: '❓', color: 'text-amber-600', bg: 'bg-amber-50' },         // Knowledge Gaps
-  '8': { icon: '💊', color: 'text-green-600', bg: 'bg-green-50' },         // Recommendations
-  '9': { icon: '🌊', color: 'text-indigo-600', bg: 'bg-indigo-50' },       // STORM
+// Monochrome section marks — emoji replaced with short textual labels
+// rendered as all-caps eyebrows. Cleaner and more professional than the
+// colorful emoji palette.
+const SECTION_MARKS = {
+  '1':  { mark: 'Verdict',         tone: 'indigo' },
+  '2a': { mark: 'Safety',          tone: 'red'    },
+  '2b': { mark: 'Treatment Hold',  tone: 'red'    },
+  '3':  { mark: 'Imaging',         tone: 'slate'  },
+  '3b': { mark: 'Clinical Context', tone: 'slate' },
+  '4':  { mark: 'Differential',    tone: 'slate'  },
+  '4b': { mark: 'Completeness',    tone: 'slate'  },
+  '5':  { mark: 'Evidence',        tone: 'indigo' },
+  '6':  { mark: 'Evidence',        tone: 'indigo' },
+  '7':  { mark: 'Knowledge Gaps',  tone: 'amber'  },
+  '8':  { mark: 'Recommendations', tone: 'emerald' },
+  '9':  { mark: 'Deep Research',   tone: 'indigo' },
+};
+
+const TONE_STYLES = {
+  slate:   { dot: 'bg-slate-500',   text: 'text-slate-600' },
+  indigo:  { dot: 'bg-indigo-500',  text: 'text-indigo-600' },
+  emerald: { dot: 'bg-emerald-500', text: 'text-emerald-600' },
+  amber:   { dot: 'bg-amber-500',   text: 'text-amber-600' },
+  red:     { dot: 'bg-red-500',     text: 'text-red-600' },
 };
 
 function getSectionMeta(title) {
   const num = title.match(/^(\d+[ab]?)\./)?.[1];
-  return SECTION_ICONS[num] || { icon: '📋', color: 'text-gray-600', bg: 'bg-gray-50' };
+  const entry = SECTION_MARKS[num] || { mark: 'Section', tone: 'slate' };
+  return { ...entry, ...TONE_STYLES[entry.tone] };
 }
 
 function getSectionLabel(title) {
@@ -94,25 +108,31 @@ function getSectionLabel(title) {
 // ── Sub-components ───────────────────────────────────────────────
 
 function VerdictSection({ body, title }) {
-  // Extract the verdict keyword (CAUTION, SUPPORTED, etc.)
   const verdictMatch = body.match(/\*\*(\w+)\.?\*\*/);
   const verdict = verdictMatch?.[1]?.toUpperCase() || '';
 
   const verdictColors = {
-    CAUTION: { bg: 'bg-amber-50', border: 'border-amber-300', badge: 'bg-amber-500 text-white', ring: 'ring-amber-100' },
-    SUPPORTED: { bg: 'bg-green-50', border: 'border-green-300', badge: 'bg-green-500 text-white', ring: 'ring-green-100' },
-    CONTRADICTED: { bg: 'bg-red-50', border: 'border-red-300', badge: 'bg-red-500 text-white', ring: 'ring-red-100' },
+    CAUTION:      { accent: 'from-amber-500 to-amber-600',   badge: 'bg-amber-500 text-white' },
+    SUPPORTED:    { accent: 'from-emerald-500 to-emerald-600', badge: 'bg-emerald-500 text-white' },
+    CONTRADICTED: { accent: 'from-red-500 to-red-600',       badge: 'bg-red-500 text-white' },
   };
-  const vc = verdictColors[verdict] || { bg: 'bg-indigo-50', border: 'border-indigo-200', badge: 'bg-indigo-500 text-white', ring: 'ring-indigo-100' };
+  const vc = verdictColors[verdict] || { accent: 'from-indigo-500 to-indigo-600', badge: 'bg-indigo-500 text-white' };
 
   return (
-    <div className={`rounded-xl border-2 ${vc.border} ${vc.bg} px-5 py-4 ring-4 ${vc.ring}`}>
-      <div className="flex items-center gap-2 mb-3">
-        <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${vc.badge}`}>{verdict || 'VERDICT'}</span>
-        <span className="text-sm font-semibold text-gray-800">{getSectionLabel(title)}</span>
-      </div>
-      <div className="text-sm text-gray-700 leading-relaxed">
-        <FormattedMarkdown content={body} />
+    <div className="relative overflow-hidden rounded-xl bg-white border border-slate-200 shadow-sm">
+      <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${vc.accent}`} />
+      <div className="px-5 py-4 pl-6">
+        <div className="flex items-center gap-2 mb-3">
+          <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase ${vc.badge}`}>
+            {verdict || 'Verdict'}
+          </span>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+            {getSectionLabel(title)}
+          </span>
+        </div>
+        <div className="text-sm text-slate-700 leading-relaxed">
+          <FormattedMarkdown content={body} />
+        </div>
       </div>
     </div>
   );
@@ -129,43 +149,40 @@ function DifferentialSection({ body, title }) {
   return (
     <div>
       {nonTableBody && (
-        <div className="text-sm text-gray-600 mb-3">
+        <div className="text-sm text-slate-600 mb-3 leading-relaxed">
           <FormattedMarkdown content={nonTableBody} />
         </div>
       )}
-      <div className="space-y-2">
+      <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden bg-white">
         {rows.map((row) => {
           const conf = confidenceStyle(row.confidence);
           const verif = verificationStyle(row.verification);
 
           return (
-            <div
-              key={row.rank}
-              className={`rounded-xl border ${conf.border} ${conf.bg} px-4 py-3 flex items-center gap-3 transition hover:shadow-sm`}
-            >
+            <div key={row.rank} className="px-4 py-3.5 flex items-center gap-3 hover:bg-slate-50 transition">
               {/* Rank */}
-              <div className={`w-8 h-8 rounded-full ${conf.dot} text-white flex items-center justify-center text-sm font-bold flex-shrink-0`}>
+              <div className="w-7 h-7 rounded-md bg-slate-900 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
                 {row.rank}
               </div>
 
               {/* Diagnosis + details */}
               <div className="flex-1 min-w-0">
-                <p className={`text-sm font-semibold ${conf.text}`}>{row.diagnosis}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${conf.bg} ${conf.text} border ${conf.border}`}>
+                <p className="text-sm font-semibold text-slate-900 truncate">{row.diagnosis}</p>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${conf.bg} ${conf.text} border ${conf.border}`}>
                     {row.confidence}
                   </span>
-                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${verif.bg} ${verif.text}`}>
+                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${verif.bg} ${verif.text}`}>
                     {verif.icon} {verif.label}
                   </span>
                 </div>
               </div>
 
               {/* Confidence bar */}
-              <div className="w-20 flex-shrink-0 hidden sm:block">
-                <div className="h-2 rounded-full bg-gray-200 overflow-hidden">
+              <div className="w-24 flex-shrink-0 hidden sm:block">
+                <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
                   <div
-                    className={`h-full rounded-full ${conf.dot}`}
+                    className={`h-full rounded-full ${conf.dot} transition-all duration-500`}
                     style={{ width: row.confidence === 'High' ? '90%' : row.confidence === 'Moderate' ? '60%' : '30%' }}
                   />
                 </div>
@@ -178,50 +195,52 @@ function DifferentialSection({ body, title }) {
   );
 }
 
-function TreatmentHoldSection({ body, title }) {
+function TreatmentHoldSection({ body }) {
   return (
-    <div className="rounded-xl border-2 border-red-300 bg-red-50 ring-4 ring-red-100 px-5 py-4">
-      <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-          <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-          </svg>
-        </div>
-        <div className="flex-1 text-sm">
-          <FormattedMarkdown content={body} />
+    <div className="relative overflow-hidden rounded-xl bg-white border border-red-200 shadow-sm">
+      <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500" />
+      <div className="px-5 py-4 pl-6">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-md bg-red-50 flex items-center justify-center flex-shrink-0">
+            <svg className="w-4 h-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+          </div>
+          <div className="flex-1 text-sm text-slate-700 leading-relaxed">
+            <FormattedMarkdown content={body} />
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function SafetySection({ body, title }) {
+function SafetySection({ body }) {
   const hasAlerts = !body.toLowerCase().includes('no critical safety alerts');
   return (
-    <div className={`rounded-xl border px-5 py-4 ${
-      hasAlerts
-        ? 'border-red-300 bg-red-50'
-        : 'border-green-200 bg-green-50'
-    }`}>
-      <div className="flex items-center gap-2 mb-1">
-        {hasAlerts ? (
-          <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-          </svg>
-        ) : (
-          <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-          </svg>
-        )}
-        <span className={`text-sm font-semibold ${hasAlerts ? 'text-red-700' : 'text-green-700'}`}>
-          {hasAlerts ? 'Critical Safety Alerts' : 'No Critical Safety Alerts'}
-        </span>
-      </div>
-      {hasAlerts && (
-        <div className="text-sm text-red-700 mt-2">
-          <FormattedMarkdown content={body} />
+    <div className="relative overflow-hidden rounded-xl bg-white border border-slate-200 shadow-sm">
+      <div className={`absolute left-0 top-0 bottom-0 w-1 ${hasAlerts ? 'bg-red-500' : 'bg-emerald-500'}`} />
+      <div className="px-5 py-4 pl-6">
+        <div className="flex items-center gap-2 mb-1">
+          {hasAlerts ? (
+            <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+          ) : (
+            <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75" />
+            </svg>
+          )}
+          <span className={`text-sm font-semibold ${hasAlerts ? 'text-red-700' : 'text-emerald-700'}`}>
+            {hasAlerts ? 'Critical Safety Alerts' : 'No critical safety alerts'}
+          </span>
         </div>
-      )}
+        {hasAlerts && (
+          <div className="text-sm text-slate-700 mt-2 leading-relaxed">
+            <FormattedMarkdown content={body} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -230,7 +249,7 @@ function KnowledgeGapsSection({ body }) {
   const gaps = body.split('\n').filter((l) => l.trim().startsWith('-')).map((l) => l.replace(/^-\s*/, '').trim());
 
   if (gaps.length === 0) {
-    return <div className="text-sm text-gray-600"><FormattedMarkdown content={body} /></div>;
+    return <div className="text-sm text-slate-600 leading-relaxed"><FormattedMarkdown content={body} /></div>;
   }
 
   return (
@@ -241,13 +260,13 @@ function KnowledgeGapsSection({ body }) {
           <div
             key={i}
             className={`rounded-lg border px-3 py-2.5 flex items-start gap-2 ${
-              isCritical ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'
+              isCritical ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-white'
             }`}
           >
-            <span className={`text-sm mt-0.5 ${isCritical ? 'text-amber-500' : 'text-gray-400'}`}>
+            <span className={`text-sm mt-0.5 font-bold ${isCritical ? 'text-amber-600' : 'text-slate-400'}`}>
               {isCritical ? '⚠' : '?'}
             </span>
-            <span className={`text-sm ${isCritical ? 'text-amber-800 font-medium' : 'text-gray-700'}`}>{gap}</span>
+            <span className={`text-sm ${isCritical ? 'text-amber-900 font-medium' : 'text-slate-700'}`}>{gap}</span>
           </div>
         );
       })}
@@ -259,7 +278,7 @@ function RecommendationsSection({ body }) {
   const items = body.split('\n').filter((l) => /^\d+\./.test(l.trim()));
 
   if (items.length === 0) {
-    return <div className="text-sm text-gray-600"><FormattedMarkdown content={body} /></div>;
+    return <div className="text-sm text-slate-600 leading-relaxed"><FormattedMarkdown content={body} /></div>;
   }
 
   return (
@@ -270,21 +289,22 @@ function RecommendationsSection({ body }) {
         return (
           <div
             key={i}
-            className={`rounded-lg border px-4 py-3 flex items-start gap-3 ${
-              isUrgent ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white'
+            className={`relative overflow-hidden rounded-lg border px-4 py-3 flex items-start gap-3 ${
+              isUrgent ? 'border-red-200 bg-white' : 'border-slate-200 bg-white'
             }`}
           >
-            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-              isUrgent ? 'bg-red-500 text-white' : 'bg-indigo-100 text-indigo-700'
+            {isUrgent && <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-red-500" />}
+            <span className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+              isUrgent ? 'bg-red-500 text-white' : 'bg-slate-900 text-white'
             }`}>
               {i + 1}
             </span>
-            <div className="text-sm flex-1">
+            <div className="text-sm text-slate-700 flex-1 leading-relaxed">
               <FormattedMarkdown content={text} />
             </div>
             {isUrgent && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 flex-shrink-0">
-                URGENT
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-200 uppercase tracking-wider flex-shrink-0">
+                Urgent
               </span>
             )}
           </div>
@@ -298,7 +318,7 @@ function EvidenceSection({ body }) {
   const refs = body.split('\n').filter((l) => l.trim().startsWith('-')).map((l) => l.replace(/^-\s*/, '').trim());
 
   if (refs.length === 0) {
-    return <div className="text-sm text-gray-600"><FormattedMarkdown content={body} /></div>;
+    return <div className="text-sm text-slate-600 leading-relaxed"><FormattedMarkdown content={body} /></div>;
   }
 
   return (
@@ -306,20 +326,21 @@ function EvidenceSection({ body }) {
       {refs.map((ref, i) => {
         const gradeMatch = ref.match(/\[Grade\s+([A-D])\]/i);
         const grade = gradeMatch?.[1]?.toUpperCase();
-        const gradeColor = grade === 'A' ? 'bg-green-100 text-green-700 border-green-300'
-          : grade === 'B' ? 'bg-blue-100 text-blue-700 border-blue-300'
-          : grade === 'C' ? 'bg-amber-100 text-amber-700 border-amber-300'
-          : 'bg-gray-100 text-gray-600 border-gray-300';
+        const gradeColor =
+          grade === 'A' ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+          : grade === 'B' ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+          : grade === 'C' ? 'bg-amber-50 text-amber-700 border-amber-200'
+          : 'bg-slate-50 text-slate-600 border-slate-200';
         const refText = ref.replace(/\[Grade\s+[A-D]\]/i, '').trim();
 
         return (
-          <div key={i} className="rounded-lg border border-gray-200 bg-white px-4 py-2.5 flex items-start gap-3">
+          <div key={i} className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 flex items-start gap-3 hover:border-slate-300 transition">
             {grade && (
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border flex-shrink-0 mt-0.5 ${gradeColor}`}>
-                Grade {grade}
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border flex-shrink-0 mt-0.5 uppercase tracking-wider ${gradeColor}`}>
+                {grade}
               </span>
             )}
-            <p className="text-sm text-gray-700 flex-1">
+            <p className="text-sm text-slate-700 flex-1 leading-relaxed">
               <FormattedMarkdown content={refText} />
             </p>
           </div>
@@ -331,7 +352,7 @@ function EvidenceSection({ body }) {
 
 function GenericSection({ body }) {
   return (
-    <div className="text-sm text-gray-700 leading-relaxed">
+    <div className="text-sm text-slate-700 leading-relaxed">
       <FormattedMarkdown content={body} />
     </div>
   );
@@ -368,43 +389,62 @@ export default function ReportRenderer({ report }) {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Report header card */}
-      <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-        <div className="px-5 py-4 bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-gray-200">
-          <div className="flex items-center gap-2 mb-1">
-            <svg className="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15a2.25 2.25 0 012.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" />
-            </svg>
-            <span className="text-base font-bold text-gray-800">Verified Second Opinion</span>
-            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
-              v{version}
-            </span>
+    <div className="space-y-3">
+      {/* Report header — dark, confident */}
+      <div className="relative overflow-hidden rounded-xl bg-slate-950 text-white shadow-xl shadow-slate-900/20">
+        <div
+          className="absolute inset-0 opacity-40"
+          style={{
+            backgroundImage: 'radial-gradient(ellipse at top right, rgba(99,102,241,0.35), transparent 55%), radial-gradient(ellipse at bottom left, rgba(16,185,129,0.2), transparent 55%)',
+          }}
+        />
+        <div
+          className="absolute inset-0 opacity-[0.05]"
+          style={{
+            backgroundImage: 'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)',
+            backgroundSize: '32px 32px',
+          }}
+        />
+        <div className="relative px-5 py-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-md bg-white/10 border border-white/10 flex items-center justify-center backdrop-blur">
+                <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75l2.25 2.25 4.5-4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="leading-tight">
+                <div className="text-[9px] font-semibold uppercase tracking-[0.22em] text-indigo-300">
+                  Verified · SECND v{version}
+                </div>
+                <div className="text-sm font-bold text-white">Second Opinion Report</div>
+              </div>
+            </div>
             {is_provisional && (
-              <span className="text-[10px] font-medium px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                Provisional — Deep Research Pending
+              <span className="text-[10px] font-semibold px-2 py-1 rounded bg-amber-500/15 text-amber-300 border border-amber-500/25 uppercase tracking-wider">
+                Provisional · Deep Research Pending
               </span>
             )}
           </div>
 
-          {/* Quick stats row */}
-          <div className="flex items-center gap-4 mt-2">
-            {treatment_holds.length > 0 && (
-              <span className="text-[10px] font-semibold text-red-700 bg-red-100 px-2 py-0.5 rounded-full">
-                {treatment_holds.length} Treatment Hold{treatment_holds.length > 1 ? 's' : ''}
-              </span>
-            )}
-            {completeness_added.length > 0 && (
-              <span className="text-[10px] font-semibold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
-                +{completeness_added.length} Completeness Add{completeness_added.length > 1 ? 's' : ''}
-              </span>
-            )}
+          {/* Stats row */}
+          <div className="flex items-center gap-2 flex-wrap mt-3 pt-3 border-t border-white/5">
             {report.verification_chain_complete && (
-              <span className="text-[10px] font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+              <span className="text-[10px] font-semibold text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded flex items-center gap-1 uppercase tracking-wider">
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
-                Verification Complete
+                Verification chain complete
+              </span>
+            )}
+            {treatment_holds.length > 0 && (
+              <span className="text-[10px] font-semibold text-red-300 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded uppercase tracking-wider">
+                {treatment_holds.length} treatment hold{treatment_holds.length > 1 ? 's' : ''}
+              </span>
+            )}
+            {completeness_added.length > 0 && (
+              <span className="text-[10px] font-semibold text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded uppercase tracking-wider">
+                +{completeness_added.length} completeness add{completeness_added.length > 1 ? '' : ''}
               </span>
             )}
           </div>
@@ -416,43 +456,41 @@ export default function ReportRenderer({ report }) {
         if (section.title === '__banner__' || section.title === '__disclaimer__') {
           if (section.title === '__disclaimer__') {
             return (
-              <div key={idx} className="text-[11px] text-gray-400 italic text-center px-4 py-2">
+              <div key={idx} className="text-[10px] text-slate-400 italic text-center px-4 py-3 border-t border-slate-100 mt-2">
                 <FormattedMarkdown content={section.body} />
               </div>
             );
           }
-          return null; // Skip banner — info is in header card
+          return null;
         }
 
         const meta = getSectionMeta(section.title);
         const label = getSectionLabel(section.title);
         const isCollapsed = collapsedSections[idx];
-        const num = section.title.match(/^(\d+[ab]?)\./)?.[1];
-        // Don't collapse verdict, treatment hold, or safety by default
-        const isHighPriority = ['1', '2a', '2b', '4'].includes(num);
 
         return (
-          <div key={idx} className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-            {/* Section header */}
+          <div key={idx} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:border-slate-300 transition">
             <button
               onClick={() => toggleSection(idx)}
-              className="w-full px-5 py-3 flex items-center gap-3 hover:bg-gray-50 transition text-left"
+              className="w-full px-5 py-3.5 flex items-center gap-3 hover:bg-slate-50 transition text-left"
             >
-              <div className={`w-8 h-8 rounded-lg ${meta.bg} flex items-center justify-center text-base flex-shrink-0`}>
-                {meta.icon}
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <span className={`w-1.5 h-1.5 rounded-full ${meta.dot} flex-shrink-0`} />
+                <span className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${meta.text} flex-shrink-0`}>
+                  {meta.mark}
+                </span>
+                <span className="text-sm font-semibold text-slate-900 truncate">{label}</span>
               </div>
-              <span className="text-sm font-semibold text-gray-800 flex-1">{label}</span>
               <svg
-                className={`w-4 h-4 text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}
+                className={`w-4 h-4 text-slate-400 transition-transform flex-shrink-0 ${isCollapsed ? '' : 'rotate-180'}`}
                 fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
               </svg>
             </button>
 
-            {/* Section content */}
             {!isCollapsed && (
-              <div className="px-5 pb-4">
+              <div className="px-5 pb-5 border-t border-slate-100 pt-4">
                 {renderSectionContent(section)}
               </div>
             )}

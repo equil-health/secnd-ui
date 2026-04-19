@@ -101,64 +101,89 @@ export default function CaseProgress({
   return (
     <div className="space-y-4">
       {/* Case preview card */}
-      <div className="bg-white border border-gray-200 rounded-2xl px-5 py-4 shadow-sm">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-medium uppercase tracking-widest text-gray-400">
-              Submitted case
-            </span>
-            {pcBits.length > 0 && (
-              <span className="text-[10px] text-gray-400">•</span>
-            )}
-            {pcBits.length > 0 && (
-              <span className="text-[11px] text-gray-500">
-                {pcBits.join(' • ')}
+      <div className="relative overflow-hidden rounded-xl bg-white border border-slate-200 shadow-sm">
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-slate-900" />
+        <div className="px-5 py-4 pl-6">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                Submitted Case
               </span>
-            )}
+              {pcBits.length > 0 && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-600">
+                  {pcBits.map((b, i) => (
+                    <span
+                      key={i}
+                      className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200"
+                    >
+                      {b}
+                    </span>
+                  ))}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] text-slate-400 tabular-nums font-mono">
+              {formatElapsed(elapsedMs)}
+            </span>
           </div>
-          <span className="text-[10px] text-gray-400 tabular-nums">
-            {formatElapsed(elapsedMs)}
-          </span>
+          <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+            {truncate(caseText)}
+          </p>
         </div>
-        <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
-          {truncate(caseText)}
-        </p>
       </div>
 
-      {/* Ruminating card — rotates verb every ~2.4s */}
-      <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl px-5 py-6">
-        <div className="flex items-center gap-3">
-          <div className="relative w-5 h-5 flex-shrink-0">
-            <div className="absolute inset-0 rounded-full bg-indigo-400 opacity-30 animate-ping" />
-            <div className="absolute inset-1 rounded-full bg-indigo-500" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div
-              key={phrase}
-              className="text-base font-medium text-indigo-900 animate-fade-in"
-              style={{ animation: 'fadeSlide 400ms ease-out' }}
-            >
-              {phrase}
-              <span className="inline-block ml-1 animate-pulse">…</span>
+      {/* Ruminating card — dark, confident */}
+      <div className="relative overflow-hidden rounded-xl bg-slate-950 text-white shadow-xl shadow-slate-900/20">
+        {/* Animated mesh background */}
+        <div
+          className="absolute inset-0 opacity-40"
+          style={{
+            backgroundImage: 'radial-gradient(ellipse at top left, rgba(99,102,241,0.4), transparent 50%), radial-gradient(ellipse at bottom right, rgba(16,185,129,0.25), transparent 50%)',
+          }}
+        />
+        <div
+          className="absolute inset-0 opacity-[0.06]"
+          style={{
+            backgroundImage: 'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)',
+            backgroundSize: '32px 32px',
+          }}
+        />
+
+        <div className="relative px-6 py-7">
+          <div className="flex items-center gap-4">
+            <div className="relative w-6 h-6 flex-shrink-0">
+              <div className="absolute inset-0 rounded-full bg-indigo-400 opacity-40 animate-ping" />
+              <div className="absolute inset-[3px] rounded-full bg-gradient-to-br from-indigo-400 to-emerald-400" />
             </div>
-            {queued ? (
-              <div className="text-[11px] text-amber-700 mt-1">
-                {position > 0
-                  ? `Queued — approximately ${position} case${position === 1 ? '' : 's'} ahead.`
-                  : 'Queued — a worker will pick this up shortly.'}
+            <div className="flex-1 min-w-0">
+              <div
+                key={phrase}
+                className="text-xl font-semibold tracking-tight text-white"
+                style={{ animation: 'fadeSlide 400ms ease-out' }}
+              >
+                {phrase}
+                <span className="inline-block ml-1 text-indigo-400 animate-pulse">…</span>
               </div>
-            ) : (
-              <div className="text-[11px] text-indigo-500 mt-1">
-                This typically takes about 3 minutes.
-              </div>
-            )}
+              {queued ? (
+                <div className="text-[11px] font-medium text-amber-300 mt-1.5">
+                  {position > 0
+                    ? `Queued — approximately ${position} case${position === 1 ? '' : 's'} ahead.`
+                    : 'Queued — a worker will pick this up shortly.'}
+                </div>
+              ) : (
+                <div className="text-[11px] font-medium text-slate-400 mt-1.5 flex items-center gap-1.5">
+                  <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+                  Typical turnaround ~3 min
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       <style>{`
         @keyframes fadeSlide {
-          from { opacity: 0; transform: translateY(3px); }
+          from { opacity: 0; transform: translateY(4px); }
           to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>

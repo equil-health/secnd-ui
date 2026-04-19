@@ -2,281 +2,466 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import UserBadge from '../components/UserBadge';
 
-const CARDS = [
+// ── Iconography — monochrome, outline, uniform stroke weight ──────────
+const Icon = {
+  verified: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75l2.25 2.25 4.5-4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+  research: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+    </svg>
+  ),
+  breaking: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
+    </svg>
+  ),
+  chat: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+    </svg>
+  ),
+  pulse: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 12h4l2-6 4 12 2-6h6" />
+    </svg>
+  ),
+  arrow: (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+    </svg>
+  ),
+};
+
+// ── Feature inventory ────────────────────────────────────────────────
+const PRIMARY_FEATURE = {
+  id: 'second-opinion',
+  eyebrow: 'Flagship',
+  title: 'Second Opinion',
+  tagline: 'Verified clinical reasoning on demand.',
+  description:
+    'Submit a case. Receive an evidence-grounded second opinion with a treatment-safety gate, knowledge-graph verification, and deep literature review.',
+  icon: Icon.verified,
+  badge: 'v2 · Verified',
+};
+
+const SECONDARY_FEATURES = [
   {
-    id: 'second-opinion',
-    title: 'Second Opinion',
-    description:
-      'Submit a clinical case and receive an AI-powered second opinion backed by evidence search, hallucination checking, and deep research.',
-    icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15a2.25 2.25 0 012.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
-      </svg>
-    ),
-    accent: 'indigo',
+    id: 'chat',
+    title: 'Med Chat',
+    description: 'Interactive clinical dialogue. Explore differentials, chase follow-ups, stress-test diagnoses.',
+    icon: Icon.chat,
+    path: '/chat',
+    badge: null,
   },
   {
     id: 'research',
     title: 'Research Base',
-    description:
-      'Run standalone deep research on any medical topic. Generates a comprehensive article with citations using the Reporter Engine.',
-    icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-      </svg>
-    ),
-    accent: 'teal',
+    description: 'Autonomous deep research on any medical topic. Structured article, verified citations.',
+    icon: Icon.research,
+    path: '/research',
+    badge: null,
   },
   {
     id: 'breaking',
     title: 'Breaking',
-    description:
-      'Daily curated medical headlines with urgency tiers, citation verification, and one-tap deep research.',
-    icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z" />
-      </svg>
-    ),
-    accent: 'teal',
-  },
-  {
-    id: 'chat',
-    title: 'Med Chat',
-    description:
-      'Chat with a medical AI about clinical cases. Get instant second opinions, explore differentials, and ask follow-up questions.',
-    icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
-      </svg>
-    ),
-    accent: 'indigo',
+    description: 'Curated medical headlines with urgency tiers, retraction checks, and one-tap deep-dive.',
+    icon: Icon.breaking,
+    path: '/breaking',
+    badge: null,
   },
   {
     id: 'pulse',
     title: 'Pulse',
-    description:
-      'Personalized medical literature digest. Stay current with recent research from top journals, summarized for your specialty.',
-    icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-      </svg>
-    ),
-    accent: 'amber',
+    description: 'Personalised literature digest. Recent journal output summarised against your specialty.',
+    icon: Icon.pulse,
+    path: '/pulse',
+    badge: 'New',
   },
 ];
 
-const accentClasses = {
-  indigo: {
-    border: 'border-indigo-200 hover:border-indigo-400',
-    icon: 'bg-indigo-100 text-indigo-600',
-    button: 'bg-indigo-600 hover:bg-indigo-700 text-white',
-    buttonOutline: 'border border-indigo-300 text-indigo-700 hover:bg-indigo-50',
-  },
-  teal: {
-    border: 'border-teal-200 hover:border-teal-400',
-    icon: 'bg-teal-100 text-teal-600',
-    button: 'bg-teal-600 hover:bg-teal-700 text-white',
-    buttonOutline: 'border border-teal-300 text-teal-700 hover:bg-teal-50',
-  },
-  amber: {
-    border: 'border-amber-200 hover:border-amber-400',
-    icon: 'bg-amber-100 text-amber-600',
-    button: 'bg-amber-600 hover:bg-amber-700 text-white',
-    buttonOutline: 'border border-amber-300 text-amber-700 hover:bg-amber-50',
-  },
-};
+// Stats rendered in the left column; placeholder numbers until wired to
+// a real API. Intentionally specific — generic round numbers read as
+// marketing; odd digits read as measurement.
+const SIGNAL_STATS = [
+  { label: 'Biomedical relationships verified against', value: '12.9M' },
+  { label: 'Safety stages gating every report', value: '7' },
+  { label: 'Median turnaround, standard case', value: '~3 min' },
+];
+
+// ═════════════════════════════════════════════════════════════════════
+// Page
+// ═════════════════════════════════════════════════════════════════════
 
 export default function LandingPage() {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
 
-  function handleCardClick(card) {
-    if (card.id === 'chat') {
-      navigate('/chat');
-    } else if (card.id === 'research') {
-      navigate('/research');
-    } else if (card.id === 'breaking') {
-      navigate('/breaking');
-    } else if (card.id === 'pulse') {
-      navigate('/pulse');
-    } else {
-      setExpanded((prev) => !prev);
-    }
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* User badge bar */}
-      <div className="bg-white/80 backdrop-blur border-b px-6 py-2 flex justify-end">
-        <UserBadge />
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      {/* ── Top bar ────────────────────────────────────────────────── */}
+      <div className="sticky top-0 z-30 backdrop-blur-xl bg-slate-950/80 border-b border-white/5">
+        <div className="mx-auto max-w-7xl px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-md bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+              <span className="text-[11px] font-black text-white tracking-tight">S</span>
+            </div>
+            <span className="text-sm font-semibold tracking-tight text-white">SECND</span>
+            <span className="hidden sm:inline text-[10px] font-medium uppercase tracking-[0.2em] text-slate-400 ml-2">
+              Medical Intelligence
+            </span>
+          </div>
+          <div className="[&_*]:text-slate-300 [&_button]:hover:text-white">
+            <UserBadge />
+          </div>
+        </div>
       </div>
 
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-700 to-teal-600">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0" style={{
-            backgroundImage: 'radial-gradient(circle at 25% 25%, white 1px, transparent 1px)',
-            backgroundSize: '40px 40px',
-          }} />
+      {/* ── Hero strip (dark) ──────────────────────────────────────── */}
+      <section className="relative overflow-hidden bg-slate-950">
+        {/* Mesh + grid layers */}
+        <div className="absolute inset-0 opacity-[0.35]">
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: 'radial-gradient(ellipse at top left, rgba(99,102,241,0.35), transparent 55%), radial-gradient(ellipse at bottom right, rgba(16,185,129,0.18), transparent 55%)',
+            }}
+          />
         </div>
+        <div
+          className="absolute inset-0 opacity-[0.08]"
+          style={{
+            backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
+            backgroundSize: '48px 48px',
+            maskImage: 'radial-gradient(ellipse at center, black 30%, transparent 75%)',
+            WebkitMaskImage: 'radial-gradient(ellipse at center, black 30%, transparent 75%)',
+          }}
+        />
 
-        <div className="relative mx-auto max-w-5xl px-6 py-24 sm:py-32 text-center">
-          <h1 className="animate-fade-in-up text-5xl sm:text-6xl font-extrabold tracking-tight text-white">
-            SECND
+        <div className="relative mx-auto max-w-7xl px-6 py-16 sm:py-20">
+          <div className="flex items-center gap-2 mb-5 animate-fade-in-up">
+            <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-emerald-300">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Live · Production
+            </span>
+            <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500">
+              Beta · Not for emergency use
+            </span>
+          </div>
+
+          <h1 className="animate-fade-in-up text-4xl sm:text-6xl font-bold tracking-tight text-white max-w-3xl leading-[1.05]">
+            Evidence-backed clinical reasoning,
+            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-indigo-400 to-emerald-400">
+              verified against 12.9M sources.
+            </span>
           </h1>
-          <p className="animate-fade-in-up animate-delay-100 mt-4 text-lg sm:text-xl text-indigo-100 max-w-2xl mx-auto">
-            AI-Powered Medical Intelligence
-          </p>
-          <p className="animate-fade-in-up animate-delay-200 mt-2 text-sm text-indigo-200/80 max-w-xl mx-auto">
-            Evidence-backed second opinions and deep research, powered by multi-agent AI pipelines.
+          <p className="animate-fade-in-up animate-delay-100 mt-5 max-w-xl text-base sm:text-lg text-slate-300 leading-relaxed">
+            A second-opinion engine for clinicians. Every conclusion grounded in a biomedical knowledge graph, stress-tested against current literature, and gated by explicit treatment-safety rules.
           </p>
         </div>
       </section>
 
-      {/* Cards */}
-      <section className="mx-auto max-w-5xl px-6 -mt-12 pb-20">
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {CARDS.map((card, i) => {
-            const ac = accentClasses[card.accent];
-            const isSecondOpinion = card.id === 'second-opinion';
-            const isExpanded = isSecondOpinion && expanded;
+      {/* ── Main 2-column grid ─────────────────────────────────────── */}
+      <section className="mx-auto max-w-7xl px-6 py-12 lg:py-16 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] gap-8 lg:gap-12">
+        {/* Left column — sticky rail */}
+        <aside className="space-y-8 lg:sticky lg:top-24 lg:self-start">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-indigo-600 mb-3">
+              Start here
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 leading-tight">
+              Pick a workflow.
+              <br />
+              <span className="text-slate-500 font-medium">We handle the rest.</span>
+            </h2>
+            <p className="mt-4 text-sm text-slate-600 leading-relaxed">
+              Five modes, one engine. Start with a full verified case, dive into literature, or chat through a clinical question.
+            </p>
+          </div>
 
-            return (
-              <div
-                key={card.id}
-                className={`animate-fade-in-up ${i === 1 ? 'animate-delay-100' : ''}`}
-              >
-                <button
-                  type="button"
-                  onClick={() => handleCardClick(card)}
-                  className={`w-full text-left rounded-2xl bg-white shadow-lg border-2 ${ac.border} p-8 transition-all duration-200 hover:shadow-xl`}
-                >
-                  <div className={`inline-flex items-center justify-center rounded-xl ${ac.icon} p-3 mb-4`}>
-                    {card.icon}
-                  </div>
-                  <h2 className="text-2xl font-bold text-gray-900">{card.title}</h2>
-                  <p className="mt-2 text-gray-600 leading-relaxed">{card.description}</p>
+          <button
+            onClick={() => navigate('/case')}
+            className="group w-full flex items-center justify-between rounded-xl bg-slate-900 hover:bg-slate-800 text-white px-5 py-3.5 text-sm font-semibold transition-all shadow-lg shadow-slate-900/10 hover:shadow-xl hover:shadow-slate-900/20"
+          >
+            <span className="flex items-center gap-2">
+              <span>Start a verified case</span>
+              <span className="text-[10px] font-medium uppercase tracking-wider text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded">
+                v2
+              </span>
+            </span>
+            <span className="transition-transform group-hover:translate-x-0.5">{Icon.arrow}</span>
+          </button>
 
-                  {isSecondOpinion && (
-                    <div className="mt-3 flex items-center text-sm text-indigo-500 font-medium">
-                      {expanded ? 'Choose a mode' : 'Click to explore'}
-                      <svg
-                        className={`ml-1 w-4 h-4 transition-transform ${expanded ? 'rotate-90' : ''}`}
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  )}
-
-                  {!isSecondOpinion && (
-                    <div className={`mt-3 flex items-center text-sm font-medium ${
-                      card.id === 'pulse' ? 'text-amber-500' : 'text-teal-500'
-                    }`}>
-                      {card.id === 'pulse' ? 'Open Pulse' : card.id === 'breaking' ? 'Open Breaking' : 'Start researching'}
-                      <svg className="ml-1 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                      </svg>
-                    </div>
-                  )}
-                </button>
-
-                {/* Expanded sub-options */}
-                {isExpanded && (
-                  <div className="mt-3 space-y-2 animate-fade-in-up">
-                    <button
-                      onClick={() => navigate('/case')}
-                      className="w-full rounded-xl px-4 py-3 text-sm font-semibold transition bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-left flex items-center justify-between"
-                    >
-                      <span>Verified Case (v2)</span>
-                      <span className="text-xs font-normal opacity-80">GPU-powered</span>
-                    </button>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => navigate('/second-opinion')}
-                        className="rounded-xl px-4 py-3 text-sm font-semibold transition bg-purple-600 hover:bg-purple-700 text-white text-left flex items-center justify-between"
-                      >
-                        <span>SDSS Second Opinion</span>
-                        <span className="text-xs font-normal opacity-80">AI</span>
-                      </button>
-                      <button
-                        onClick={() => navigate('/chat')}
-                        className="rounded-xl px-4 py-3 text-sm font-semibold transition bg-indigo-600 hover:bg-indigo-700 text-white text-left flex items-center justify-between"
-                      >
-                        <span>SDSS Chat</span>
-                        <span className="text-xs font-normal opacity-80">AI</span>
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <button
-                        onClick={() => navigate('/submit')}
-                        className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition ${ac.button}`}
-                      >
-                        Upload
-                      </button>
-                      <button
-                        onClick={() => navigate('/demo')}
-                        className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition ${ac.buttonOutline}`}
-                      >
-                        Demo
-                      </button>
-                      <button
-                        onClick={() => navigate('/history')}
-                        className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition ${ac.buttonOutline}`}
-                      >
-                        History
-                      </button>
-                    </div>
-                  </div>
-                )}
+          {/* Signal stats */}
+          <dl className="border-t border-slate-200 pt-6 space-y-5">
+            {SIGNAL_STATS.map((stat) => (
+              <div key={stat.label} className="flex items-baseline justify-between gap-4">
+                <dt className="text-[11px] text-slate-500 leading-snug">{stat.label}</dt>
+                <dd className="text-lg font-bold tracking-tight text-slate-900 tabular-nums whitespace-nowrap">
+                  {stat.value}
+                </dd>
               </div>
-            );
-          })}
+            ))}
+          </dl>
+
+          {/* Trust marks */}
+          <div className="border-t border-slate-200 pt-6">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400 mb-3">
+              Grounded in
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {['PrimeKG', 'OpenAlex', 'STORM', 'ICMR', 'MedGemma'].map((src) => (
+                <span
+                  key={src}
+                  className="text-[11px] font-medium text-slate-600 border border-slate-200 bg-white rounded-md px-2 py-1"
+                >
+                  {src}
+                </span>
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        {/* Right column — cards */}
+        <div className="space-y-4">
+          {/* Primary card */}
+          <PrimaryCard
+            feature={PRIMARY_FEATURE}
+            expanded={expanded}
+            onToggle={() => setExpanded((e) => !e)}
+            onNavigate={navigate}
+          />
+
+          {/* Secondary cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {SECONDARY_FEATURES.map((f, i) => (
+              <SecondaryCard
+                key={f.id}
+                feature={f}
+                onClick={() => navigate(f.path)}
+                delayClass={i === 1 ? 'animate-delay-100' : i === 2 ? 'animate-delay-200' : ''}
+              />
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* Disclaimer — collapsible */}
       <LandingDisclaimer />
     </div>
   );
 }
 
+// ═════════════════════════════════════════════════════════════════════
+// Cards
+// ═════════════════════════════════════════════════════════════════════
+
+function PrimaryCard({ feature, expanded, onToggle, onNavigate }) {
+  return (
+    <div className="animate-fade-in-up">
+      <div className="relative overflow-hidden rounded-2xl bg-white border border-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.12)] hover:shadow-[0_1px_2px_rgba(15,23,42,0.04),0_16px_48px_-12px_rgba(15,23,42,0.18)] transition-shadow">
+        {/* Accent bar */}
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-indigo-500 via-indigo-600 to-emerald-500" />
+
+        <button
+          type="button"
+          onClick={onToggle}
+          className="w-full text-left p-7 sm:p-8"
+        >
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div className="flex items-center gap-2.5">
+              <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-slate-900 text-white">
+                {feature.icon}
+              </span>
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-indigo-600">
+                  {feature.eyebrow}
+                </div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+                    {feature.title}
+                  </h3>
+                  {feature.badge && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+                      {feature.badge}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <span
+              className={`flex-shrink-0 mt-1 text-slate-400 transition-transform ${expanded ? 'rotate-90' : ''}`}
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </span>
+          </div>
+
+          <p className="text-base font-semibold text-slate-900 leading-snug mb-2">
+            {feature.tagline}
+          </p>
+          <p className="text-sm text-slate-600 leading-relaxed max-w-xl">
+            {feature.description}
+          </p>
+
+          <div className="mt-5 flex items-center gap-4 text-[11px] text-slate-500">
+            <span className="flex items-center gap-1.5">
+              <svg className="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              Knowledge-graph verified
+            </span>
+            <span className="flex items-center gap-1.5">
+              <svg className="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              Treatment-safety gated
+            </span>
+            <span className="hidden sm:flex items-center gap-1.5">
+              <svg className="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              Hallucination-checked
+            </span>
+          </div>
+        </button>
+
+        {expanded && (
+          <div className="border-t border-slate-100 bg-slate-50/50 px-7 sm:px-8 py-5 animate-fade-in-up">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500 mb-3">
+              Choose an entry point
+            </div>
+            <div className="space-y-2">
+              <button
+                onClick={() => onNavigate('/case')}
+                className="group w-full flex items-center justify-between rounded-xl bg-slate-900 hover:bg-slate-800 text-white px-4 py-3.5 text-sm font-semibold transition-all"
+              >
+                <span className="flex items-center gap-2.5">
+                  <span>Verified Case</span>
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded">
+                    v2
+                  </span>
+                </span>
+                <span className="text-xs font-normal text-slate-400 flex items-center gap-1.5">
+                  GPU-accelerated
+                  <span className="transition-transform group-hover:translate-x-0.5">{Icon.arrow}</span>
+                </span>
+              </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  onClick={() => onNavigate('/second-opinion')}
+                  className="group flex items-center justify-between rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-800 px-4 py-3 text-sm font-semibold transition-all"
+                >
+                  <span>Legacy Second Opinion</span>
+                  <span className="text-slate-400 transition-transform group-hover:translate-x-0.5">{Icon.arrow}</span>
+                </button>
+                <button
+                  onClick={() => onNavigate('/chat')}
+                  className="group flex items-center justify-between rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-800 px-4 py-3 text-sm font-semibold transition-all"
+                >
+                  <span>Chat Mode</span>
+                  <span className="text-slate-400 transition-transform group-hover:translate-x-0.5">{Icon.arrow}</span>
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-2 pt-1">
+                <button
+                  onClick={() => onNavigate('/submit')}
+                  className="rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 px-3 py-2 text-xs font-semibold transition-colors"
+                >
+                  Upload
+                </button>
+                <button
+                  onClick={() => onNavigate('/demo')}
+                  className="rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 px-3 py-2 text-xs font-semibold transition-colors"
+                >
+                  Demo
+                </button>
+                <button
+                  onClick={() => onNavigate('/history')}
+                  className="rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 px-3 py-2 text-xs font-semibold transition-colors"
+                >
+                  History
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SecondaryCard({ feature, onClick, delayClass }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`group animate-fade-in-up ${delayClass} relative overflow-hidden rounded-xl bg-white border border-slate-200 p-5 text-left transition-all hover:border-slate-900 hover:shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_32px_-12px_rgba(15,23,42,0.18)]`}
+    >
+      {/* left accent bar — appears on hover */}
+      <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-slate-900 scale-y-0 group-hover:scale-y-100 transition-transform origin-top" />
+
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <span className="inline-flex items-center justify-center w-8 h-8 rounded-md bg-slate-100 text-slate-700 group-hover:bg-slate-900 group-hover:text-white transition-colors">
+          {feature.icon}
+        </span>
+        {feature.badge && (
+          <span className="text-[9px] font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">
+            {feature.badge}
+          </span>
+        )}
+      </div>
+
+      <h3 className="text-base font-bold tracking-tight text-slate-900 mb-1">
+        {feature.title}
+      </h3>
+      <p className="text-xs text-slate-600 leading-relaxed mb-3">
+        {feature.description}
+      </p>
+      <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-900">
+        <span>Open</span>
+        <span className="transition-transform group-hover:translate-x-0.5">{Icon.arrow}</span>
+      </div>
+    </button>
+  );
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// Disclaimer
+// ═════════════════════════════════════════════════════════════════════
+
 function LandingDisclaimer() {
   const [open, setOpen] = useState(false);
 
   return (
-    <footer className="bg-gray-100 border-t border-gray-200 px-6 py-2">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between text-[10px] font-semibold text-gray-500 uppercase tracking-wide hover:text-gray-700 transition-colors"
-      >
-        <span>Critical Disclaimer &mdash; AI-generated, not a clinical diagnosis</span>
-        <span className="text-xs">{open ? '\u25B2' : '\u25BC'}</span>
-      </button>
-      {open && (
-        <div className="max-w-4xl mx-auto mt-2 space-y-2 text-[11px] leading-relaxed text-gray-500">
-          <p>
-            This report is generated by the SECND Reporter Engine.
-            It is intended for informational and research purposes only and constitutes
-            a &ldquo;Clinical Second Opinion&rdquo; based on available digital records.
-            It is <span className="font-medium text-gray-600">not</span> a confirmatory
-            clinical diagnosis.
-          </p>
-          <p className="font-medium text-gray-600">
-            No Emergency Use: Do not use this portal for medical emergencies.
-          </p>
-          <div className="border-t border-gray-200 pt-2 mt-1 space-y-1">
+    <footer className="bg-slate-900 text-slate-400 border-t border-slate-800">
+      <div className="mx-auto max-w-7xl px-6 py-4">
+        <button
+          onClick={() => setOpen((o) => !o)}
+          className="w-full flex items-center justify-between text-[10px] font-semibold text-slate-400 uppercase tracking-[0.22em] hover:text-slate-200 transition-colors"
+        >
+          <span>
+            <span className="text-amber-400 mr-2">⚠</span>
+            Critical Disclaimer — AI-generated, not a clinical diagnosis
+          </span>
+          <span className="text-xs">{open ? '▲' : '▼'}</span>
+        </button>
+        {open && (
+          <div className="max-w-4xl mx-auto mt-4 space-y-2 text-[11px] leading-relaxed text-slate-400">
             <p>
-              <span className="font-medium text-gray-600">Standard Output</span>
-              {' '}&mdash; Evidence-Backed Verification of the referring diagnosis.
+              This report is generated by the SECND Reporter Engine. It is intended for informational and research purposes only and constitutes a &ldquo;Clinical Second Opinion&rdquo; based on available digital records. It is <span className="font-semibold text-slate-200">not</span> a confirmatory clinical diagnosis.
             </p>
-            <p>
-              <span className="font-medium text-gray-600">Think Zebra (Beta)</span>
-              {' '}&mdash; Differential Discovery for low-prevalence conditions. Not clinical recommendations.
-            </p>
+            <p className="font-semibold text-amber-300">No emergency use. Do not use this portal for medical emergencies.</p>
+            <div className="border-t border-slate-800 pt-2 mt-1 space-y-1">
+              <p><span className="font-semibold text-slate-200">Standard Output</span> — Evidence-backed verification of the referring diagnosis.</p>
+              <p><span className="font-semibold text-slate-200">Think Zebra (Beta)</span> — Differential discovery for low-prevalence conditions. Not clinical recommendations.</p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </footer>
   );
 }

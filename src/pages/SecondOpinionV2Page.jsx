@@ -235,37 +235,51 @@ export default function SecondOpinionV2Page() {
   const isQueueFull = status === 'queue_full';
 
   return (
-    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center justify-between flex-shrink-0">
+    <div className="h-screen bg-slate-50 text-slate-900 flex flex-col overflow-hidden">
+      {/* Top bar — dark, matches landing */}
+      <div className="bg-slate-950 border-b border-white/5 px-4 sm:px-6 py-3 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/')} className="text-gray-400 hover:text-gray-700 transition">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <button
+            onClick={() => navigate('/')}
+            className="text-slate-400 hover:text-white transition p-1 -ml-1"
+            title="Back to home"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
             </svg>
           </button>
-          <div>
-            <h1 className="text-lg font-bold text-gray-900">Second Opinion</h1>
-            <p className="text-[10px] text-gray-400 uppercase tracking-widest">Verified Clinical Decision Support</p>
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-md bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+              <span className="text-[11px] font-black text-white tracking-tight">S</span>
+            </div>
+            <div className="leading-tight">
+              <h1 className="text-sm font-semibold tracking-tight text-white">Second Opinion</h1>
+              <p className="text-[9px] font-medium text-slate-400 uppercase tracking-[0.22em]">
+                Verified · v2
+              </p>
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {!isIdle && (
             <button
               onClick={handleNewCase}
-              className="px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+              className="px-3 py-1.5 text-xs font-semibold text-slate-300 border border-white/10 rounded-md hover:bg-white/5 hover:text-white transition"
             >
               New Case
             </button>
           )}
-          <UserBadge />
+          <div className="[&_*]:text-slate-300 [&_button]:hover:text-white">
+            <UserBadge />
+          </div>
         </div>
       </div>
 
-      {/* Disclaimer */}
-      <div className="bg-amber-50 border-b border-amber-200 px-4 sm:px-6 py-2 text-center">
-        <p className="text-[10px] text-amber-700">
-          AI-generated medical information for research and educational purposes only. Not a substitute for clinical judgment.
+      {/* Disclaimer strip — slim, dark-adjacent */}
+      <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 sm:px-6 py-1.5 text-center">
+        <p className="text-[10px] text-amber-700 font-medium">
+          <span className="text-amber-600 mr-1.5">⚠</span>
+          AI-generated for research and education only. Not a substitute for clinical judgment.
         </p>
       </div>
 
@@ -277,15 +291,15 @@ export default function SecondOpinionV2Page() {
             {/* Idle: show case input form */}
             {(isIdle || isSubmitting) && (
               <div>
-                <div className="text-center mb-8">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-indigo-100 flex items-center justify-center">
-                    <svg className="w-8 h-8 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5" />
-                    </svg>
+                <div className="mb-8">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-indigo-600 mb-3">
+                    New Case
                   </div>
-                  <h2 className="text-xl font-bold text-gray-900 mb-1">Verified Second Opinion</h2>
-                  <p className="text-sm text-gray-500 max-w-lg mx-auto">
-                    Submit a clinical case for AI-powered verification. The pipeline generates a differential, fact-checks against a biomedical knowledge graph, searches medical evidence, and compiles a verified report.
+                  <h2 className="text-3xl font-bold tracking-tight text-slate-900 leading-tight">
+                    Describe the case.
+                  </h2>
+                  <p className="mt-3 text-sm text-slate-600 leading-relaxed max-w-xl">
+                    We'll generate a differential, verify against a biomedical knowledge graph, cross-check the literature, and compile a report you can act on.
                   </p>
                 </div>
                 <CaseInputForm onSubmit={handleSubmit} disabled={isSubmitting} />
@@ -303,61 +317,66 @@ export default function SecondOpinionV2Page() {
               />
             )}
 
-            {/* Queue full — friendly 503 with retry */}
+            {/* Queue full — amber status card */}
             {isQueueFull && (
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4">
-                <div className="flex items-start gap-2">
-                  <svg className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-amber-800">System at capacity</p>
-                    <p className="text-xs text-amber-700 mt-1">
-                      {error || 'SDSS is processing the maximum number of cases.'}
-                    </p>
-                    {queueInfo && (
-                      <p className="text-[10px] text-amber-600 mt-1">
-                        {queueInfo.in_flight} case{queueInfo.in_flight === 1 ? '' : 's'} in progress
-                        {queueInfo.max_workers ? ` (${queueInfo.max_workers} worker${queueInfo.max_workers === 1 ? '' : 's'}, queue ${queueInfo.queue_max})` : ''}.
-                        {retryAfter ? ` Retry in ~${retryAfter}s.` : ''}
+              <div className="relative overflow-hidden rounded-xl bg-white border border-amber-200 shadow-sm">
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500" />
+                <div className="p-5 pl-6">
+                  <div className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-slate-900">System at capacity</p>
+                      <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                        {error || 'SECND is processing the maximum number of cases.'}
                       </p>
-                    )}
-                    <div className="mt-3 flex gap-2">
-                      <button
-                        onClick={() => lastSubmissionArgs && handleSubmit(lastSubmissionArgs)}
-                        disabled={!lastSubmissionArgs}
-                        className="px-3 py-1.5 text-xs font-medium bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-lg transition disabled:opacity-50"
-                      >
-                        Retry submission
-                      </button>
-                      <button
-                        onClick={handleNewCase}
-                        className="px-3 py-1.5 text-xs font-medium text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 transition"
-                      >
-                        Start over
-                      </button>
+                      {queueInfo && (
+                        <p className="text-[11px] text-slate-500 mt-1.5 font-mono">
+                          {queueInfo.in_flight} in flight · {queueInfo.max_workers} worker{queueInfo.max_workers === 1 ? '' : 's'} · queue max {queueInfo.queue_max}
+                          {retryAfter ? ` · retry in ~${retryAfter}s` : ''}
+                        </p>
+                      )}
+                      <div className="mt-4 flex gap-2">
+                        <button
+                          onClick={() => lastSubmissionArgs && handleSubmit(lastSubmissionArgs)}
+                          disabled={!lastSubmissionArgs}
+                          className="px-3 py-1.5 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white rounded-md transition disabled:opacity-50"
+                        >
+                          Retry submission
+                        </button>
+                        <button
+                          onClick={handleNewCase}
+                          className="px-3 py-1.5 text-xs font-semibold text-slate-700 border border-slate-200 rounded-md hover:bg-slate-50 transition"
+                        >
+                          Start over
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Failed */}
+            {/* Failed — red status card */}
             {isFailed && (
-              <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-4">
-                <div className="flex items-start gap-2">
-                  <svg className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h-14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                  </svg>
-                  <div>
-                    <p className="text-sm font-semibold text-red-700">Analysis Failed</p>
-                    <p className="text-xs text-red-600 mt-1">{error}</p>
-                    <button
-                      onClick={handleNewCase}
-                      className="mt-3 px-3 py-1.5 text-xs font-medium bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition"
-                    >
-                      Try Again
-                    </button>
+              <div className="relative overflow-hidden rounded-xl bg-white border border-red-200 shadow-sm">
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500" />
+                <div className="p-5 pl-6">
+                  <div className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h-14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">Analysis failed</p>
+                      <p className="text-xs text-slate-600 mt-1 leading-relaxed">{error}</p>
+                      <button
+                        onClick={handleNewCase}
+                        className="mt-4 px-3 py-1.5 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white rounded-md transition"
+                      >
+                        Try again
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -370,36 +389,40 @@ export default function SecondOpinionV2Page() {
                 <DeepDiveButton status={status} onTrigger={handleDeepDive} />
 
                 {/* Secondary toolbar */}
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap border-y border-slate-200 py-2.5 -mx-1 px-1">
                   <button
                     onClick={() => store.getState().toggleAudit()}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium transition"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold transition"
                   >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
                     </svg>
                     Audit Trail
                   </button>
                   <div className="flex items-center gap-1 ml-auto">
-                    <span className="text-[10px] text-gray-400 uppercase tracking-wide mr-1">Export</span>
-                    <button
-                      onClick={() => { try { exportV2PDF(report); } catch (e) { alert(e.message); } }}
-                      className="px-2.5 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition"
-                    >
-                      PDF
-                    </button>
-                    <button
-                      onClick={() => { try { exportV2DOCX(report); } catch (e) { alert(e.message); } }}
-                      className="px-2.5 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition"
-                    >
-                      DOCX
-                    </button>
-                    <button
-                      onClick={() => { try { exportV2HTML(report); } catch (e) { alert(e.message); } }}
-                      className="px-2.5 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition"
-                    >
-                      HTML
-                    </button>
+                    <span className="text-[9px] text-slate-400 uppercase tracking-[0.22em] font-semibold mr-2">
+                      Export
+                    </span>
+                    <div className="inline-flex rounded-md border border-slate-200 bg-white overflow-hidden divide-x divide-slate-200">
+                      <button
+                        onClick={() => { try { exportV2PDF(report); } catch (e) { alert(e.message); } }}
+                        className="px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition"
+                      >
+                        PDF
+                      </button>
+                      <button
+                        onClick={() => { try { exportV2DOCX(report); } catch (e) { alert(e.message); } }}
+                        className="px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition"
+                      >
+                        DOCX
+                      </button>
+                      <button
+                        onClick={() => { try { exportV2HTML(report); } catch (e) { alert(e.message); } }}
+                        className="px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition"
+                      >
+                        HTML
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -411,10 +434,17 @@ export default function SecondOpinionV2Page() {
 
         {/* Right panel — chat (shown after Phase A) */}
         {hasReport && (
-          <div className="w-full max-w-md border-l border-gray-200 bg-white flex flex-col">
-            <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-              <h3 className="text-sm font-semibold text-gray-800">Discuss Report</h3>
-              <p className="text-[10px] text-gray-400">Ask questions about the diagnosis, evidence, or recommendations</p>
+          <div className="w-full max-w-md border-l border-slate-200 bg-white flex flex-col">
+            <div className="px-4 py-3 border-b border-slate-200 bg-slate-950">
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <h3 className="text-xs font-semibold text-white uppercase tracking-[0.18em]">
+                  Discuss Report
+                </h3>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1 leading-snug">
+                Ask about the diagnosis, evidence, treatment holds, or next steps.
+              </p>
             </div>
             <CaseChat />
           </div>

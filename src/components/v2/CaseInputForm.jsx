@@ -110,51 +110,59 @@ export default function CaseInputForm({ onSubmit, disabled }) {
     return m > 0 ? `${m}:${String(s).padStart(2, '0')}` : `${s}s`;
   }
 
+  const inputBase = 'rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10 transition';
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Case text */}
+    <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Case text — primary field */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Clinical Case</label>
+        <div className="flex items-baseline justify-between mb-2">
+          <label className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+            Clinical Narrative
+          </label>
+          <span className="text-[10px] text-slate-400">
+            {caseText.length} chars
+          </span>
+        </div>
         <div className="relative">
           <textarea
             ref={textareaRef}
             value={caseText}
             onChange={(e) => setCaseText(e.target.value)}
             placeholder="Describe the clinical case — include presenting symptoms, relevant history, lab values, and imaging findings..."
-            rows={6}
+            rows={7}
             disabled={disabled}
-            className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition resize-y disabled:bg-gray-50 disabled:text-gray-400"
+            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10 transition resize-y disabled:bg-slate-50 disabled:text-slate-400"
           />
-          {/* Mic button in textarea corner */}
           <div className="absolute bottom-2 right-2">
             {isTranscribing ? (
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 text-amber-600 text-xs">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-700 text-[11px] font-medium border border-amber-200">
                 <div className="w-3 h-3 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-                Transcribing...
+                Transcribing
               </div>
             ) : !isModelReady && !isModelError ? (
-              <div className="px-2 py-1 rounded-full bg-gray-100 text-gray-400 text-[10px]">
-                {modelStatus.stage === 'model' ? `ASR ${modelStatus.pct}%` : 'Loading ASR...'}
+              <div className="px-2 py-1 rounded-md bg-slate-100 text-slate-500 text-[10px] font-mono">
+                {modelStatus.stage === 'model' ? `ASR ${modelStatus.pct}%` : 'ASR loading'}
               </div>
             ) : isModelError ? null : (
               <button
                 type="button"
                 onClick={handleMicClick}
                 disabled={disabled}
-                className={`p-1.5 rounded-full transition ${
+                className={`p-1.5 rounded-md transition ${
                   isRecording
-                    ? 'bg-red-100 text-red-600 hover:bg-red-200'
-                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700'
+                    ? 'bg-red-500 text-white hover:bg-red-600 shadow-sm'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
                 } disabled:opacity-30`}
                 title={isRecording ? `Recording ${formatTime(recordingDuration)}` : 'Voice input'}
               >
                 {isRecording ? (
-                  <div className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                    <span className="text-[10px] font-mono">{formatTime(recordingDuration)}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                    <span className="text-[10px] font-mono font-semibold">{formatTime(recordingDuration)}</span>
                   </div>
                 ) : (
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
                   </svg>
                 )}
@@ -166,20 +174,25 @@ export default function CaseInputForm({ onSubmit, disabled }) {
 
       {/* Images */}
       <div>
-        <div className="flex items-center gap-2 mb-1">
-          <label className="text-sm font-medium text-gray-700">Images</label>
-          <span className="text-[10px] text-gray-400">Optional — X-rays, scans, lab printouts</span>
+        <div className="flex items-baseline justify-between mb-2">
+          <label className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+            Imaging
+          </label>
+          <span className="text-[10px] text-slate-400">
+            Optional · JPG / PNG · 10 MB each
+          </span>
         </div>
         <div className="flex flex-wrap gap-2">
           {images.map((img, i) => (
-            <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
+            <div key={i} className="relative w-16 h-16 rounded-md overflow-hidden border border-slate-200 bg-slate-100 group">
               <img src={img.preview} alt="" className="w-full h-full object-cover" />
               <button
                 type="button"
                 onClick={() => removeImage(i)}
-                className="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white rounded-bl-lg flex items-center justify-center text-[10px] hover:bg-red-600"
+                className="absolute top-0 right-0 w-4 h-4 bg-slate-900 text-white flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition"
+                title="Remove"
               >
-                x
+                ×
               </button>
             </div>
           ))}
@@ -187,9 +200,9 @@ export default function CaseInputForm({ onSubmit, disabled }) {
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={disabled}
-            className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 hover:border-indigo-400 hover:text-indigo-500 transition disabled:opacity-30"
+            className="w-16 h-16 rounded-md border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center text-slate-400 hover:border-slate-900 hover:text-slate-900 hover:bg-white transition disabled:opacity-30"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
           </button>
@@ -204,31 +217,36 @@ export default function CaseInputForm({ onSubmit, disabled }) {
         </div>
       </div>
 
-      {/* Patient context toggle */}
-      <div>
+      {/* Patient context — collapsible */}
+      <div className="border border-slate-200 rounded-xl bg-white overflow-hidden">
         <button
           type="button"
           onClick={() => setShowContext(!showContext)}
-          className="text-sm text-indigo-600 hover:text-indigo-800 transition flex items-center gap-1"
+          className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50 transition"
         >
-          <svg className={`w-3.5 h-3.5 transition ${showContext ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <span className="flex items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+              Patient Context
+            </span>
+            <span className="text-[10px] text-slate-400">optional</span>
+          </span>
+          <svg className={`w-4 h-4 text-slate-400 transition-transform ${showContext ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
           </svg>
-          Patient context {showContext ? '(hide)' : '(optional)'}
         </button>
         {showContext && (
-          <div className="mt-2 grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 p-4 border-t border-slate-200 bg-slate-50/50">
             <input
               type="number"
               placeholder="Age"
               value={patientContext.age}
               onChange={(e) => setPatientContext((p) => ({ ...p, age: e.target.value }))}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100"
+              className={inputBase}
             />
             <select
               value={patientContext.sex}
               onChange={(e) => setPatientContext((p) => ({ ...p, sex: e.target.value }))}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100"
+              className={inputBase}
             >
               <option value="">Sex</option>
               <option value="male">Male</option>
@@ -238,59 +256,72 @@ export default function CaseInputForm({ onSubmit, disabled }) {
               placeholder="Comorbidities (comma-separated)"
               value={patientContext.comorbidities}
               onChange={(e) => setPatientContext((p) => ({ ...p, comorbidities: e.target.value }))}
-              className="col-span-2 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100"
+              className={`col-span-2 ${inputBase}`}
             />
             <input
               placeholder="Current medications (comma-separated)"
               value={patientContext.medications}
               onChange={(e) => setPatientContext((p) => ({ ...p, medications: e.target.value }))}
-              className="col-span-2 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100"
+              className={`col-span-2 ${inputBase}`}
             />
             <textarea
               placeholder="Lab values, e.g.: AFP 38 ng/mL, CRP 42 mg/L"
               value={patientContext.labs}
               onChange={(e) => setPatientContext((p) => ({ ...p, labs: e.target.value }))}
               rows={2}
-              className="col-span-2 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 resize-none"
+              className={`col-span-2 ${inputBase} resize-none`}
             />
           </div>
         )}
       </div>
 
-      {/* Mode toggle */}
-      <div className="flex items-center gap-3">
-        <span className="text-sm text-gray-600">Mode:</span>
-        {[
-          { id: 'standard', label: 'Standard', desc: 'Evidence-backed verification' },
-          { id: 'zebra', label: 'Think Zebra', desc: 'Rare disease focus' },
-        ].map((m) => (
-          <button
-            key={m.id}
-            type="button"
-            onClick={() => setMode(m.id)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-              mode === m.id
-                ? 'bg-indigo-100 text-indigo-700 ring-1 ring-indigo-300'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            {m.label}
-          </button>
-        ))}
+      {/* Mode toggle — segmented */}
+      <div>
+        <label className="block text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500 mb-2">
+          Analysis Mode
+        </label>
+        <div className="inline-flex p-1 bg-slate-100 rounded-lg border border-slate-200">
+          {[
+            { id: 'standard', label: 'Standard', desc: 'Evidence-backed verification' },
+            { id: 'zebra', label: 'Think Zebra', desc: 'Rare disease focus' },
+          ].map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => setMode(m.id)}
+              className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition ${
+                mode === m.id
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title={m.desc}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Error */}
       {error && (
-        <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-1.5">{error}</p>
+        <div className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+          <svg className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h-14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+          </svg>
+          <span>{error}</span>
+        </div>
       )}
 
       {/* Submit */}
       <button
         type="submit"
         disabled={disabled || !caseText.trim()}
-        className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
+        className="group w-full py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-all disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10 hover:shadow-xl hover:shadow-slate-900/20 disabled:shadow-none"
       >
-        Generate Verified Second Opinion
+        <span>Generate Verified Second Opinion</span>
+        <svg className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-disabled:translate-x-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+        </svg>
       </button>
     </form>
   );
