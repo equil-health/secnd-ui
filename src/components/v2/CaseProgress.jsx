@@ -1,52 +1,49 @@
 import { useEffect, useState, useMemo } from 'react';
 
-// Claude-CLI-style verbs that rotate while the pipeline runs. Each entry
-// has a present-continuous verb and an ambiguous noun — enough to feel
-// like the system is thinking, without claiming a specific stage.
-const THINKING_VERBS = [
-  'Pondering',
-  'Ruminating',
-  'Triangulating',
-  'Cross-referencing',
-  'Deliberating',
-  'Interrogating',
-  'Contemplating',
-  'Reconciling',
-  'Synthesising',
-  'Scrutinising',
-  'Weighing',
-  'Investigating',
-  'Cogitating',
-  'Distilling',
-  'Percolating',
-  'Corroborating',
-  'Dissecting',
-  'Consulting',
-  'Navigating',
-  'Parsing',
-  'Mulling',
-  'Enumerating',
-  'Sifting',
-  'Interpreting',
-];
-
-const THINKING_OBJECTS = [
-  'the differential',
-  'the literature',
-  'the evidence base',
-  'candidate diagnoses',
-  'lab thresholds',
-  'knowledge-graph paths',
-  'contraindications',
-  'must-exclude diagnoses',
-  'guideline citations',
-  'treatment holds',
-  'the clinical timeline',
-  'the case narrative',
-  'symptom clusters',
-  'completeness gaps',
-  'evidence quality tiers',
-  'verification signals',
+// Claude-CLI-style goofy gerunds. Purely whimsical — no reference to
+// the case, medicine, or any internal stage. Just something to watch
+// while the pipeline grinds.
+const THINKING_PHRASES = [
+  'Perambulating',
+  'Bamboozling',
+  'Flibbertigibbeting',
+  'Noodling',
+  'Kerfuffling',
+  'Discombobulating',
+  'Befuddling',
+  'Hobnobbing',
+  'Galumphing',
+  'Skedaddling',
+  'Confabulating',
+  'Lollygagging',
+  'Whiffling',
+  'Snollygostering',
+  'Boondoggling',
+  'Gallivanting',
+  'Rumpusing',
+  'Wobbulating',
+  'Flummoxing',
+  'Finagling',
+  'Hornswoggling',
+  'Persnicketing',
+  'Wafflestomping',
+  'Tittering',
+  'Dillydallying',
+  'Futzing',
+  'Gobsmacking',
+  'Harrumphing',
+  'Absquatulating',
+  'Kerplunking',
+  'Whomping',
+  'Bumblefussing',
+  'Collywobbling',
+  'Shilly-shallying',
+  'Mollycoddling',
+  'Malarkeying',
+  'Hootenannying',
+  'Ballyhooing',
+  'Higgledy-piggledying',
+  'Cattywampussing',
 ];
 
 function useRotatingPhrase(intervalMs = 2400) {
@@ -55,10 +52,7 @@ function useRotatingPhrase(intervalMs = 2400) {
     const id = setInterval(() => setTick((t) => t + 1), intervalMs);
     return () => clearInterval(id);
   }, [intervalMs]);
-  // Avoid repeating the same verb twice in a row; seed from tick.
-  const verb = THINKING_VERBS[tick % THINKING_VERBS.length];
-  const obj = THINKING_OBJECTS[(tick * 7) % THINKING_OBJECTS.length];
-  return `${verb} ${obj}`;
+  return THINKING_PHRASES[tick % THINKING_PHRASES.length];
 }
 
 function formatElapsed(ms) {
