@@ -122,55 +122,48 @@ export default function CaseProgress({
         </div>
       </div>
 
-      {/* Ruminating card — dark, confident */}
-      <div className="relative overflow-hidden rounded-xl bg-slate-950 text-white shadow-xl shadow-slate-900/20">
-        {/* Animated mesh background */}
+      {/* Ruminating card — pastel sky/emerald */}
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-sky-50 via-white to-emerald-50 border border-slate-200 shadow-sm">
+        {/* Soft colour wash */}
         <div
-          className="absolute inset-0 opacity-40"
+          className="absolute inset-0 opacity-80"
           style={{
-            backgroundImage: 'radial-gradient(ellipse at top left, rgba(99,102,241,0.4), transparent 50%), radial-gradient(ellipse at bottom right, rgba(16,185,129,0.25), transparent 50%)',
-          }}
-        />
-        <div
-          className="absolute inset-0 opacity-[0.06]"
-          style={{
-            backgroundImage: 'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)',
-            backgroundSize: '32px 32px',
+            backgroundImage: 'radial-gradient(ellipse at top left, rgba(125,211,252,0.4), transparent 55%), radial-gradient(ellipse at bottom right, rgba(167,243,208,0.4), transparent 55%)',
           }}
         />
 
         <div className="relative px-6 py-7">
           <div className="flex items-start gap-4">
             <div className="relative w-6 h-6 flex-shrink-0 mt-1.5">
-              <div className="absolute inset-0 rounded-full bg-indigo-400 opacity-40 animate-ping" />
-              <div className="absolute inset-[3px] rounded-full bg-gradient-to-br from-indigo-400 to-emerald-400" />
+              <div className="absolute inset-0 rounded-full bg-emerald-400 opacity-50 animate-ping" />
+              <div className="absolute inset-[3px] rounded-full bg-gradient-to-br from-sky-500 to-emerald-500 shadow-md shadow-sky-500/30" />
             </div>
             <div className="flex-1 min-w-0">
               <div
                 key={phrase}
-                className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-white italic"
+                className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 italic"
                 style={{
                   animation: 'fadeSlide 600ms ease-out',
                   fontVariationSettings: "'SOFT' 40, 'opsz' 72, 'wght' 600",
                 }}
               >
                 {phrase}
-                <span className="inline-block ml-1 text-indigo-400 animate-pulse not-italic">…</span>
+                <span className="inline-block ml-1 text-sky-600 animate-pulse not-italic">…</span>
               </div>
               <div className="flex items-center gap-3 mt-2.5">
-                <span className="stat-value text-sm text-white tabular-nums">
+                <span className="stat-value text-sm text-slate-900 tabular-nums">
                   {formatElapsed(elapsedMs)}
                 </span>
-                <span className="text-slate-600">/</span>
+                <span className="text-slate-400">/</span>
                 {queued ? (
-                  <span className="text-[11px] font-medium text-amber-300">
+                  <span className="text-[11px] font-medium text-amber-800">
                     {position > 0
                       ? `Queued · ~${position} ahead`
                       : 'Queued · picking up shortly'}
                   </span>
                 ) : (
-                  <span className="text-[11px] font-medium text-slate-400 flex items-center gap-1.5">
-                    <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-[11px] font-medium text-slate-600 flex items-center gap-1.5">
+                    <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
                     Typical ~3 min
                   </span>
                 )}

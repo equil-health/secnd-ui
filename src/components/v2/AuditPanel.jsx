@@ -29,15 +29,21 @@ export default function AuditPanel() {
       <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm animate-fade-in-up" onClick={toggleAudit} />
 
       <div className="relative w-full max-w-md bg-white shadow-2xl overflow-y-auto border-l border-slate-200">
-        {/* Dark header */}
-        <div className="sticky top-0 z-10 bg-slate-950 border-b border-white/5 px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
-            <h2 className="text-xs font-semibold text-white uppercase tracking-[0.22em]">Audit Trail</h2>
+        {/* Header — pastel sky/emerald */}
+        <div className="sticky top-0 z-10 relative overflow-hidden bg-gradient-to-br from-sky-50 via-white to-emerald-50 border-b border-slate-200 px-4 py-3 flex items-center justify-between">
+          <div
+            className="absolute inset-0 opacity-60"
+            style={{
+              backgroundImage: 'radial-gradient(ellipse at top right, rgba(125,211,252,0.3), transparent 55%), radial-gradient(ellipse at bottom left, rgba(167,243,208,0.25), transparent 55%)',
+            }}
+          />
+          <div className="relative flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <h2 className="eyebrow text-emerald-700">Audit Trail</h2>
           </div>
           <button
             onClick={toggleAudit}
-            className="text-slate-400 hover:text-white transition p-1 -mr-1"
+            className="relative text-slate-500 hover:text-slate-900 transition p-1 -mr-1"
             title="Close"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

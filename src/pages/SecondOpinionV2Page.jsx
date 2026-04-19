@@ -236,12 +236,12 @@ export default function SecondOpinionV2Page() {
 
   return (
     <div className="h-screen bg-slate-50 text-slate-900 flex flex-col overflow-hidden">
-      {/* Top bar — dark, matches landing */}
-      <div className="bg-slate-950 border-b border-white/5 px-4 sm:px-6 py-3 flex items-center justify-between flex-shrink-0">
+      {/* Top bar — white/blur, matches landing */}
+      <div className="sticky top-0 z-30 backdrop-blur-xl bg-white/80 border-b border-slate-200/70 px-4 sm:px-6 py-3 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/')}
-            className="text-slate-400 hover:text-white transition p-1 -ml-1"
+            className="text-slate-500 hover:text-slate-900 transition p-1 -ml-1"
             title="Back to home"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -249,12 +249,12 @@ export default function SecondOpinionV2Page() {
             </svg>
           </button>
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-md bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <div className="w-7 h-7 rounded-md bg-gradient-to-br from-sky-500 to-emerald-500 flex items-center justify-center shadow-md shadow-sky-500/20">
               <span className="text-[11px] font-black text-white tracking-tight">S</span>
             </div>
             <div className="leading-tight">
-              <h1 className="text-sm font-semibold tracking-tight text-white">Second Opinion</h1>
-              <p className="text-[9px] font-medium text-slate-400 uppercase tracking-[0.22em]">
+              <h1 className="text-sm font-semibold tracking-tight text-slate-900">Second Opinion</h1>
+              <p className="text-[9px] font-medium text-slate-500 uppercase tracking-[0.22em]">
                 Verified · v2
               </p>
             </div>
@@ -264,20 +264,18 @@ export default function SecondOpinionV2Page() {
           {!isIdle && (
             <button
               onClick={handleNewCase}
-              className="px-3 py-1.5 text-xs font-semibold text-slate-300 border border-white/10 rounded-md hover:bg-white/5 hover:text-white transition"
+              className="px-3 py-1.5 text-xs font-semibold text-slate-700 border border-slate-200 rounded-md hover:bg-slate-100 hover:text-slate-900 transition"
             >
               New Case
             </button>
           )}
-          <div className="[&_*]:text-slate-300 [&_button]:hover:text-white">
-            <UserBadge />
-          </div>
+          <UserBadge />
         </div>
       </div>
 
-      {/* Disclaimer strip — slim, dark-adjacent */}
-      <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 sm:px-6 py-1.5 text-center">
-        <p className="text-[10px] text-amber-700 font-medium">
+      {/* Disclaimer strip — slim, pastel-amber */}
+      <div className="bg-amber-50 border-b border-amber-200 px-4 sm:px-6 py-1.5 text-center">
+        <p className="text-[10px] text-amber-800 font-medium">
           <span className="text-amber-600 mr-1.5">⚠</span>
           AI-generated for research and education only. Not a substitute for clinical judgment.
         </p>
@@ -433,16 +431,22 @@ export default function SecondOpinionV2Page() {
         {/* Right panel — chat (shown after Phase A) */}
         {hasReport && (
           <div className="w-full max-w-md border-l border-slate-200 bg-white flex flex-col">
-            <div className="px-4 py-3 border-b border-slate-200 bg-slate-950">
-              <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <h3 className="text-xs font-semibold text-white uppercase tracking-[0.18em]">
-                  Discuss Report
-                </h3>
+            <div className="relative overflow-hidden px-4 py-3 border-b border-slate-200 bg-gradient-to-br from-sky-50 via-white to-emerald-50">
+              <div
+                className="absolute inset-0 opacity-60"
+                style={{
+                  backgroundImage: 'radial-gradient(ellipse at top right, rgba(125,211,252,0.3), transparent 55%), radial-gradient(ellipse at bottom left, rgba(167,243,208,0.25), transparent 55%)',
+                }}
+              />
+              <div className="relative">
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <h3 className="eyebrow text-emerald-700">Discuss Report</h3>
+                </div>
+                <p className="text-[11px] text-slate-700 mt-1 leading-snug">
+                  Ask about the diagnosis, evidence, treatment holds, or next steps.
+                </p>
               </div>
-              <p className="text-[10px] text-slate-400 mt-1 leading-snug">
-                Ask about the diagnosis, evidence, treatment holds, or next steps.
-              </p>
             </div>
             <CaseChat />
           </div>

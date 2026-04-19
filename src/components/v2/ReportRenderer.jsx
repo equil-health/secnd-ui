@@ -390,47 +390,40 @@ export default function ReportRenderer({ report }) {
 
   return (
     <div className="space-y-3">
-      {/* Report header — dark, confident */}
-      <div className="relative overflow-hidden rounded-xl bg-slate-950 text-white shadow-xl shadow-slate-900/20">
+      {/* Report header — pastel sky/emerald, matches landing */}
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-sky-50 via-white to-emerald-50 border border-slate-200 shadow-sm">
         <div
-          className="absolute inset-0 opacity-40"
+          className="absolute inset-0 opacity-70"
           style={{
-            backgroundImage: 'radial-gradient(ellipse at top right, rgba(99,102,241,0.35), transparent 55%), radial-gradient(ellipse at bottom left, rgba(16,185,129,0.2), transparent 55%)',
-          }}
-        />
-        <div
-          className="absolute inset-0 opacity-[0.05]"
-          style={{
-            backgroundImage: 'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)',
-            backgroundSize: '32px 32px',
+            backgroundImage: 'radial-gradient(ellipse at top right, rgba(125,211,252,0.35), transparent 55%), radial-gradient(ellipse at bottom left, rgba(167,243,208,0.3), transparent 55%)',
           }}
         />
         <div className="relative px-5 py-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-md bg-white/10 border border-white/10 flex items-center justify-center backdrop-blur">
-                <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <div className="w-8 h-8 rounded-md bg-gradient-to-br from-sky-500 to-emerald-500 flex items-center justify-center shadow-md shadow-sky-500/20">
+                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.25}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75l2.25 2.25 4.5-4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <div className="leading-tight">
-                <div className="eyebrow text-indigo-300">
+                <div className="eyebrow text-emerald-700">
                   Verified · SECND v{version}
                 </div>
-                <div className="display-title text-lg text-white mt-0.5">Second Opinion Report</div>
+                <div className="display-title text-lg text-slate-900 mt-0.5">Second Opinion Report</div>
               </div>
             </div>
             {is_provisional && (
-              <span className="text-[10px] font-semibold px-2 py-1 rounded bg-amber-500/15 text-amber-300 border border-amber-500/25 uppercase tracking-wider">
+              <span className="text-[10px] font-semibold px-2 py-1 rounded bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wider">
                 Provisional · Deep Research Pending
               </span>
             )}
           </div>
 
           {/* Stats row */}
-          <div className="flex items-center gap-2 flex-wrap mt-3 pt-3 border-t border-white/5">
+          <div className="flex items-center gap-2 flex-wrap mt-3 pt-3 border-t border-slate-200/60">
             {report.verification_chain_complete && (
-              <span className="text-[10px] font-semibold text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded flex items-center gap-1 uppercase tracking-wider">
+              <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded flex items-center gap-1 uppercase tracking-wider">
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
@@ -438,12 +431,12 @@ export default function ReportRenderer({ report }) {
               </span>
             )}
             {treatment_holds.length > 0 && (
-              <span className="text-[10px] font-semibold text-red-300 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded uppercase tracking-wider">
+              <span className="text-[10px] font-semibold text-red-800 bg-red-100 border border-red-200 px-2 py-0.5 rounded uppercase tracking-wider">
                 {treatment_holds.length} treatment hold{treatment_holds.length > 1 ? 's' : ''}
               </span>
             )}
             {completeness_added.length > 0 && (
-              <span className="text-[10px] font-semibold text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded uppercase tracking-wider">
+              <span className="text-[10px] font-semibold text-sky-800 bg-sky-100 border border-sky-200 px-2 py-0.5 rounded uppercase tracking-wider">
                 +{completeness_added.length} completeness add{completeness_added.length > 1 ? '' : ''}
               </span>
             )}
