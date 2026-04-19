@@ -86,11 +86,6 @@ const SECONDARY_FEATURES = [
 // Stats rendered in the left column; placeholder numbers until wired to
 // a real API. Intentionally specific — generic round numbers read as
 // marketing; odd digits read as measurement.
-const SIGNAL_STATS = [
-  { label: 'Biomedical relationships verified against', value: '12.9M' },
-  { label: 'Safety stages gating every report', value: '7' },
-];
-
 // ═════════════════════════════════════════════════════════════════════
 // Page
 // ═════════════════════════════════════════════════════════════════════
@@ -188,18 +183,6 @@ export default function LandingPage() {
             </span>
             <span className="transition-transform group-hover:translate-x-0.5">{Icon.arrow}</span>
           </button>
-
-          {/* Signal stats */}
-          <dl className="border-t border-slate-200 pt-6 space-y-5">
-            {SIGNAL_STATS.map((stat) => (
-              <div key={stat.label} className="flex items-baseline justify-between gap-4">
-                <dt className="text-[11px] text-slate-500 leading-snug">{stat.label}</dt>
-                <dd className="stat-value text-xl text-slate-900 whitespace-nowrap">
-                  {stat.value}
-                </dd>
-              </div>
-            ))}
-          </dl>
 
           {/* Trust marks */}
           <div className="border-t border-slate-200 pt-6">
