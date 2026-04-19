@@ -89,7 +89,6 @@ const SECONDARY_FEATURES = [
 const SIGNAL_STATS = [
   { label: 'Biomedical relationships verified against', value: '12.9M' },
   { label: 'Safety stages gating every report', value: '7' },
-  { label: 'Median turnaround, standard case', value: '~3 min' },
 ];
 
 // ═════════════════════════════════════════════════════════════════════
@@ -103,48 +102,45 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       {/* ── Top bar ────────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-30 backdrop-blur-xl bg-slate-950/80 border-b border-white/5">
+      <div className="sticky top-0 z-30 backdrop-blur-xl bg-white/80 border-b border-slate-200/70">
         <div className="mx-auto max-w-7xl px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-md bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <div className="w-7 h-7 rounded-md bg-gradient-to-br from-sky-500 to-emerald-500 flex items-center justify-center shadow-md shadow-sky-500/20">
               <span className="text-[11px] font-black text-white tracking-tight">S</span>
             </div>
-            <span className="text-sm font-semibold tracking-tight text-white">SECND</span>
-            <span className="hidden sm:inline text-[10px] font-medium uppercase tracking-[0.2em] text-slate-400 ml-2">
+            <span className="text-sm font-semibold tracking-tight text-slate-900">SECND</span>
+            <span className="hidden sm:inline text-[10px] font-medium uppercase tracking-[0.2em] text-slate-500 ml-2">
               Medical Intelligence
             </span>
           </div>
-          <div className="[&_*]:text-slate-300 [&_button]:hover:text-white">
-            <UserBadge />
-          </div>
+          <UserBadge />
         </div>
       </div>
 
-      {/* ── Hero strip (dark) ──────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-slate-950">
-        {/* Mesh + grid layers */}
-        <div className="absolute inset-0 opacity-[0.35]">
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage: 'radial-gradient(ellipse at top left, rgba(99,102,241,0.35), transparent 55%), radial-gradient(ellipse at bottom right, rgba(16,185,129,0.18), transparent 55%)',
-            }}
-          />
-        </div>
+      {/* ── Hero strip — pastel green/blue, airy ───────────────────── */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-sky-50 via-white to-emerald-50 border-b border-slate-200/70">
+        {/* Soft colour wash */}
         <div
-          className="absolute inset-0 opacity-[0.08]"
+          className="absolute inset-0"
           style={{
-            backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
+            backgroundImage: 'radial-gradient(ellipse at top left, rgba(125,211,252,0.35), transparent 55%), radial-gradient(ellipse at bottom right, rgba(167,243,208,0.35), transparent 55%)',
+          }}
+        />
+        {/* Faint grid — barely there */}
+        <div
+          className="absolute inset-0 opacity-[0.06]"
+          style={{
+            backgroundImage: 'linear-gradient(rgba(15,23,42,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(15,23,42,0.8) 1px, transparent 1px)',
             backgroundSize: '48px 48px',
             maskImage: 'radial-gradient(ellipse at center, black 30%, transparent 75%)',
             WebkitMaskImage: 'radial-gradient(ellipse at center, black 30%, transparent 75%)',
           }}
         />
 
-        <div className="relative mx-auto max-w-7xl px-6 py-16 sm:py-20">
-          <div className="flex items-center gap-2 mb-5 animate-fade-in-up">
-            <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-emerald-300">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+        <div className="relative mx-auto max-w-7xl px-6 py-12 sm:py-14">
+          <div className="flex items-center gap-2 mb-4 animate-fade-in-up">
+            <span className="flex items-center gap-1.5 rounded-full bg-emerald-100/80 border border-emerald-200 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-emerald-700">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Live · Production
             </span>
             <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500">
@@ -152,14 +148,14 @@ export default function LandingPage() {
             </span>
           </div>
 
-          <h1 className="animate-fade-in-up display-hero text-5xl sm:text-7xl text-white max-w-4xl">
-            Evidence-backed clinical reasoning,
-            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-indigo-400 to-emerald-400">
-              verified against 12.9M sources.
+          <h1 className="animate-fade-in-up display-hero text-3xl sm:text-5xl text-slate-900 max-w-3xl">
+            Evidence-backed clinical reasoning
+            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-sky-600 via-teal-500 to-emerald-600">
+              for the moments that matter.
             </span>
           </h1>
-          <p className="animate-fade-in-up animate-delay-100 mt-6 max-w-xl text-base sm:text-lg text-slate-300 leading-relaxed">
-            A second-opinion engine for clinicians. Every conclusion grounded in a biomedical knowledge graph, stress-tested against current literature, and gated by explicit treatment-safety rules.
+          <p className="animate-fade-in-up animate-delay-100 mt-5 max-w-xl text-sm sm:text-base text-slate-600 leading-relaxed">
+            A second-opinion engine for clinicians. Every conclusion grounded in medical knowledge, stress-tested against current literature, and gated by explicit treatment-safety rules.
           </p>
         </div>
       </section>
