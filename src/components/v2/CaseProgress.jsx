@@ -46,7 +46,7 @@ const THINKING_PHRASES = [
   'Cattywampussing',
 ];
 
-function useRotatingPhrase(intervalMs = 2400) {
+function useRotatingPhrase(intervalMs = 4500) {
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), intervalMs);
@@ -148,8 +148,8 @@ export default function CaseProgress({
         />
 
         <div className="relative px-6 py-7">
-          <div className="flex items-center gap-4">
-            <div className="relative w-6 h-6 flex-shrink-0">
+          <div className="flex items-start gap-4">
+            <div className="relative w-6 h-6 flex-shrink-0 mt-1.5">
               <div className="absolute inset-0 rounded-full bg-indigo-400 opacity-40 animate-ping" />
               <div className="absolute inset-[3px] rounded-full bg-gradient-to-br from-indigo-400 to-emerald-400" />
             </div>
@@ -158,25 +158,31 @@ export default function CaseProgress({
                 key={phrase}
                 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-white italic"
                 style={{
-                  animation: 'fadeSlide 400ms ease-out',
+                  animation: 'fadeSlide 600ms ease-out',
                   fontVariationSettings: "'SOFT' 40, 'opsz' 72, 'wght' 600",
                 }}
               >
                 {phrase}
                 <span className="inline-block ml-1 text-indigo-400 animate-pulse not-italic">…</span>
               </div>
-              {queued ? (
-                <div className="text-[11px] font-medium text-amber-300 mt-1.5">
-                  {position > 0
-                    ? `Queued — approximately ${position} case${position === 1 ? '' : 's'} ahead.`
-                    : 'Queued — a worker will pick this up shortly.'}
-                </div>
-              ) : (
-                <div className="text-[11px] font-medium text-slate-400 mt-1.5 flex items-center gap-1.5">
-                  <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
-                  Typical turnaround ~3 min
-                </div>
-              )}
+              <div className="flex items-center gap-3 mt-2.5">
+                <span className="stat-value text-sm text-white tabular-nums">
+                  {formatElapsed(elapsedMs)}
+                </span>
+                <span className="text-slate-600">/</span>
+                {queued ? (
+                  <span className="text-[11px] font-medium text-amber-300">
+                    {position > 0
+                      ? `Queued · ~${position} ahead`
+                      : 'Queued · picking up shortly'}
+                  </span>
+                ) : (
+                  <span className="text-[11px] font-medium text-slate-400 flex items-center gap-1.5">
+                    <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+                    Typical ~3 min
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
