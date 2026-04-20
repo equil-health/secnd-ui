@@ -110,39 +110,72 @@ export default function BreakingPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Top bar */}
-      <div className="bg-white/80 backdrop-blur border-b px-6 py-3 flex items-center justify-between">
-        <button
-          onClick={() => navigate('/')}
-          className="text-sm text-gray-500 hover:text-gray-800 flex items-center gap-1"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-          Back
-        </button>
-        <UserBadge />
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      {/* ── Top bar — branded lockup, matches landing ───────────────── */}
+      <div className="sticky top-0 z-30 backdrop-blur-xl bg-white/80 border-b border-slate-200/70">
+        <div className="mx-auto max-w-7xl px-6 py-3 flex items-center justify-between">
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2.5 group"
+          >
+            <span className="text-slate-400 group-hover:text-slate-700 transition-colors">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </span>
+            <div className="w-7 h-7 rounded-md bg-gradient-to-br from-sky-500 to-emerald-500 flex items-center justify-center shadow-md shadow-sky-500/20">
+              <span className="text-[11px] font-black text-white tracking-tight">S</span>
+            </div>
+            <span className="text-sm font-semibold tracking-tight text-slate-900">SECND</span>
+            <span className="hidden sm:inline text-[10px] font-medium uppercase tracking-[0.2em] text-slate-500 ml-2">
+              Medical Intelligence
+            </span>
+          </button>
+          <UserBadge />
+        </div>
       </div>
 
-      {/* Hero */}
-      <section className="bg-gradient-to-br from-[#0F2C5C] via-[#0F2C5C] to-teal-700 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0" style={{
-            backgroundImage: 'radial-gradient(circle at 25% 25%, white 1px, transparent 1px)',
-            backgroundSize: '40px 40px',
-          }} />
-        </div>
-        <div className="relative mx-auto max-w-4xl px-6 py-10 text-center">
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">Breaking</h1>
-          <p className="mt-2 text-teal-200 text-sm sm:text-base">
-            Daily curated medical headlines — ranked, verified, delivered.
+      {/* ── Hero — pastel sky/emerald, airy ─────────────────────────── */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-sky-50 via-white to-emerald-50 border-b border-slate-200/70">
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage:
+              'radial-gradient(ellipse at top left, rgba(125,211,252,0.35), transparent 55%), radial-gradient(ellipse at bottom right, rgba(167,243,208,0.35), transparent 55%)',
+          }}
+        />
+        <div
+          className="absolute inset-0 opacity-[0.06] pointer-events-none"
+          style={{
+            backgroundImage:
+              'linear-gradient(rgba(15,23,42,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(15,23,42,0.8) 1px, transparent 1px)',
+            backgroundSize: '48px 48px',
+            maskImage: 'radial-gradient(ellipse at center, black 30%, transparent 75%)',
+            WebkitMaskImage: 'radial-gradient(ellipse at center, black 30%, transparent 75%)',
+          }}
+        />
+        <div className="relative mx-auto max-w-4xl px-6 py-10 sm:py-12">
+          <div className="flex items-center gap-2 mb-3 animate-fade-in-up">
+            <span className="flex items-center gap-1.5 rounded-full bg-emerald-100/80 border border-emerald-200 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-emerald-700">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Daily · 05:00 IST
+            </span>
+            {alertCount > 0 && (
+              <span className="flex items-center gap-1.5 rounded-full bg-rose-100 border border-rose-200 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-rose-700">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                {alertCount} Alert{alertCount > 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+          <h1 className="animate-fade-in-up display-hero text-3xl sm:text-5xl text-slate-900 leading-tight">
+            Breaking
+            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-sky-600 via-teal-500 to-emerald-600">
+              medical headlines.
+            </span>
+          </h1>
+          <p className="animate-fade-in-up animate-delay-100 mt-4 max-w-xl text-sm sm:text-base text-slate-600 leading-relaxed">
+            Curated daily. Ranked by urgency, verified against retraction registries, one-tap deep-dive on any story.
           </p>
-          {alertCount > 0 && (
-            <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/90 text-white text-xs font-bold">
-              {'\u{1F6A8}'} {alertCount} ALERT{alertCount > 1 ? 's' : ''} today
-            </div>
-          )}
         </div>
       </section>
 
