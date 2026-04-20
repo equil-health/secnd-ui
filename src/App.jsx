@@ -1,4 +1,7 @@
+import { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
+import { ensureFreshToken } from './utils/api';
+import useAuthStore from './stores/authStore';
 import HomePage from './pages/HomePage';
 import ReportPage from './pages/ReportPage';
 import HistoryPage from './pages/HistoryPage';
@@ -17,7 +20,30 @@ import ChatPage from './pages/ChatPage';
 import SecondOpinionV2Page from './pages/SecondOpinionV2Page';
 import ProtectedRoute from './components/ProtectedRoute';
 
+function useSessionKeepAlive() {
+  const token = useAuthStore((s) => s.token);
+
+  useEffect(() => {
+    if (!token) return;
+
+    // Refresh when the tab regains focus — a clinician returning after a
+    // lunch break shouldn't hit a dead token on their next click.
+    const onFocus = () => { ensureFreshToken(); };
+    window.addEventListener('focus', onFocus);
+
+    // Periodic background check every 5 min while the tab is open.
+    // ensureFreshToken no-ops unless the token is inside the refresh window.
+    const interval = setInterval(() => { ensureFreshToken(); }, 5 * 60 * 1000);
+
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      clearInterval(interval);
+    };
+  }, [token]);
+}
+
 export default function App() {
+  useSessionKeepAlive();
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />

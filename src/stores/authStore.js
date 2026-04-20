@@ -26,4 +26,26 @@ const useAuthStore = create((set, get) => ({
   isDemo: () => get().user?.is_demo === true,
 }));
 
+// Keep in-memory state in sync with silent refreshes from utils/api.js.
+// api.js dispatches `secnd:token-refreshed` after a successful renewal so
+// the store reflects the new token + user without forcing a reload.
+if (typeof window !== 'undefined') {
+  window.addEventListener('secnd:token-refreshed', (e) => {
+    const { token, user } = e.detail || {};
+    if (token) useAuthStore.setState({ token, user: user || useAuthStore.getState().user });
+  });
+
+  // Cross-tab sync: if another tab refreshes the token, pick it up here.
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'secnd_token') {
+      useAuthStore.setState({
+        token: e.newValue || null,
+        user: e.newValue
+          ? JSON.parse(localStorage.getItem('secnd_user') || 'null')
+          : null,
+      });
+    }
+  });
+}
+
 export default useAuthStore;

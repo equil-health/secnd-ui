@@ -1,12 +1,77 @@
 const BASE = '/api';
 
+// Silent-refresh window: if the JWT expires within this many seconds,
+// proactively call /auth/refresh before the outgoing request.
+const REFRESH_THRESHOLD_SECONDS = 15 * 60;
+
 function getToken() {
   return localStorage.getItem('secnd_token');
+}
+
+function setToken(token, user) {
+  if (token) localStorage.setItem('secnd_token', token);
+  if (user) localStorage.setItem('secnd_user', JSON.stringify(user));
 }
 
 function authHeaders() {
   const token = getToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function decodeJwtExp(token) {
+  try {
+    const payload = token.split('.')[1];
+    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    const data = JSON.parse(json);
+    return typeof data.exp === 'number' ? data.exp : null;
+  } catch {
+    return null;
+  }
+}
+
+let refreshInFlight = null;
+
+export async function refreshSession() {
+  return refreshToken();
+}
+
+async function refreshToken() {
+  const token = getToken();
+  if (!token) return null;
+  if (refreshInFlight) return refreshInFlight;
+
+  refreshInFlight = (async () => {
+    try {
+      const res = await fetch(`${BASE}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      setToken(data.access_token, data.user);
+      window.dispatchEvent(new CustomEvent('secnd:token-refreshed', {
+        detail: { token: data.access_token, user: data.user },
+      }));
+      return data.access_token;
+    } catch {
+      return null;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  return refreshInFlight;
+}
+
+export async function ensureFreshToken() {
+  const token = getToken();
+  if (!token) return;
+  const exp = decodeJwtExp(token);
+  if (!exp) return;
+  const secondsLeft = exp - Math.floor(Date.now() / 1000);
+  if (secondsLeft > 0 && secondsLeft < REFRESH_THRESHOLD_SECONDS) {
+    await refreshToken();
+  }
 }
 
 function handle401() {
@@ -18,10 +83,18 @@ function handle401() {
 }
 
 async function request(url, options = {}) {
-  const res = await fetch(url, {
+  await ensureFreshToken();
+  const doFetch = () => fetch(url, {
     headers: { 'Content-Type': 'application/json', ...authHeaders(), ...options.headers },
     ...options,
   });
+  let res = await doFetch();
+  if (res.status === 401 && getToken()) {
+    const newToken = await refreshToken();
+    if (newToken) {
+      res = await doFetch();
+    }
+  }
   if (res.status === 401) {
     handle401();
     throw new Error('Session expired — please log in again');
@@ -161,18 +234,28 @@ export async function listCases(page = 1, perPage = 20) {
   return res.json();
 }
 
-export async function submitCaseWithFiles(formData) {
-  const res = await fetch(`${BASE}/cases/submit-with-files`, {
+async function uploadWithAuth(url, formData) {
+  await ensureFreshToken();
+  const doFetch = () => fetch(url, {
     method: 'POST',
     headers: authHeaders(),
     body: formData,
   });
+  let res = await doFetch();
+  if (res.status === 401 && getToken()) {
+    const newToken = await refreshToken();
+    if (newToken) res = await doFetch();
+  }
   if (res.status === 401) { handle401(); throw new Error('Session expired'); }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || res.statusText);
   }
   return res.json();
+}
+
+export async function submitCaseWithFiles(formData) {
+  return uploadWithAuth(`${BASE}/cases/submit-with-files`, formData);
 }
 
 export function downloadUrl(id, format) {
@@ -180,17 +263,7 @@ export function downloadUrl(id, format) {
 }
 
 export async function submitAudio(formData) {
-  const res = await fetch(`${BASE}/cases/audio`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: formData,
-  });
-  if (res.status === 401) { handle401(); throw new Error('Session expired'); }
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || res.statusText);
-  }
-  return res.json();
+  return uploadWithAuth(`${BASE}/cases/audio`, formData);
 }
 
 export async function submitResearch(data) {
@@ -309,17 +382,7 @@ export async function sdssSubmit(caseText, mode = 'standard', indiaContext = fal
 }
 
 export async function sdssSubmitWithFiles(formData) {
-  const res = await fetch(`${BASE}/sdss/submit-with-files`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: formData,
-  });
-  if (res.status === 401) { handle401(); throw new Error('Session expired'); }
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || res.statusText);
-  }
-  return res.json(); // { task_id }
+  return uploadWithAuth(`${BASE}/sdss/submit-with-files`, formData);
 }
 
 export async function sdssGetTask(taskId) {
@@ -353,11 +416,17 @@ export async function chatCompletions(messages, taskId = null) {
   const body = { messages, stream: true };
   if (taskId) body.task_id = taskId;
 
-  const res = await fetch(`${BASE}/chat/completions`, {
+  await ensureFreshToken();
+  const doFetch = () => fetch(`${BASE}/chat/completions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(body),
   });
+  let res = await doFetch();
+  if (res.status === 401 && getToken()) {
+    const newToken = await refreshToken();
+    if (newToken) res = await doFetch();
+  }
   if (res.status === 401) { handle401(); throw new Error('Session expired'); }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
@@ -376,17 +445,7 @@ export async function chatAnalyze(caseText, mode = 'standard', files = []) {
   formData.append('mode', mode);
   for (const f of files) formData.append('files', f);
 
-  const res = await fetch(`${BASE}/chat/analyze`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: formData,
-  });
-  if (res.status === 401) { handle401(); throw new Error('Session expired'); }
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || res.statusText);
-  }
-  return res.json();
+  return uploadWithAuth(`${BASE}/chat/analyze`, formData);
 }
 
 /**
@@ -396,16 +455,5 @@ export async function chatAnalyze(caseText, mode = 'standard', files = []) {
 export async function chatTranscribe(audioBlob) {
   const formData = new FormData();
   formData.append('audio', audioBlob, 'recording.webm');
-
-  const res = await fetch(`${BASE}/chat/transcribe`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: formData,
-  });
-  if (res.status === 401) { handle401(); throw new Error('Session expired'); }
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || res.statusText);
-  }
-  return res.json();
+  return uploadWithAuth(`${BASE}/chat/transcribe`, formData);
 }
