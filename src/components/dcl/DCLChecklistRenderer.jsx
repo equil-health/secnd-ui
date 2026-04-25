@@ -213,6 +213,17 @@ function ZoneTreatmentHolds({ holds }) {
 // ─── Zone 3: Ranked differential ─────────────────────────────────────
 
 function ZoneRankedDifferential({ entries }) {
+  // "Over-rejection" signal — the verifier marked every triplet False
+  // for at least three out of five diagnoses. Almost always a verifier
+  // distribution-gap problem, not a clinical refutation. Surface it so
+  // the trainee doesn't take "0/N triplets verified" at face value.
+  const refutedCount = entries.filter((e) => {
+    const counts = e.kg_triplet_counts;
+    return e.kg_verification_status === 'refuted'
+      && counts && counts.total > 0 && counts.true === 0;
+  }).length;
+  const showOverRejectionWarning = entries.length >= 3 && refutedCount >= 3;
+
   return (
     <ZoneShell
       eyebrow="Zone 3"
@@ -224,6 +235,18 @@ function ZoneRankedDifferential({ entries }) {
           : `${entries.length} ${entries.length === 1 ? 'diagnosis' : 'diagnoses'}`
       }
     >
+      {showOverRejectionWarning && (
+        <div className="mb-3 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 flex gap-2 items-start">
+          <svg className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0 3.375h.007M11.249 4.501l-9.247 16.005A1.498 1.498 0 003.247 22.502h17.506a1.498 1.498 0 001.245-2.001l-9.247-16.005a1.498 1.498 0 00-2.502 0z" />
+          </svg>
+          <p className="text-[11px] text-amber-900 leading-relaxed">
+            <span className="font-semibold">KG verifier rejected most triplets on this case.</span>
+            {' '}This usually reflects a coverage gap in the verifier rather than a clinical refutation —
+            treat the ranked diagnoses on their clinical merits and rely on your own judgement.
+          </p>
+        </div>
+      )}
       {entries.length === 0 ? (
         <p className="text-sm text-slate-500 italic">
           No differential entries returned. The narrative may not have provided enough information for verification.
@@ -284,7 +307,7 @@ function KgVerificationBadge({ status }) {
   const map = {
     verified:    { label: 'KG verified',     cls: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
     unverified:  { label: 'KG partial',      cls: 'bg-slate-100 text-slate-700 border-slate-200' },
-    refuted:     { label: 'KG questioned',   cls: 'bg-rose-100 text-rose-800 border-rose-200' },
+    refuted:     { label: 'KG refuted',      cls: 'bg-rose-100 text-rose-800 border-rose-200' },
     not_checked: { label: 'KG not checked',  cls: 'bg-slate-100 text-slate-500 border-slate-200' },
   };
   const entry = map[status] || map.not_checked;
