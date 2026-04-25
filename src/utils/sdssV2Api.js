@@ -296,13 +296,22 @@ export async function startCase({ caseText, mode = 'standard', patientContext, i
     };
   }
 
+  // The pod's ImageAttachment model uses content_type/data; the form
+  // emits mime_type/base64 internally. Translate at the API boundary so
+  // neither side has to know about the other's naming.
+  const podImages = (images || []).map((img) => ({
+    filename: img.filename,
+    content_type: img.content_type ?? img.mime_type,
+    data: img.data ?? img.base64,
+  }));
+
   const res = await gpuFetch('/v2/case/start', {
     method: 'POST',
     body: JSON.stringify({
       case_text: caseText,
       mode,
       patient_context: patientContext || undefined,
-      images: images || [],
+      images: podImages,
     }),
   });
   return res.json();
