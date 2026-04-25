@@ -18,6 +18,7 @@ import SdssHistoryPage from './pages/SdssHistoryPage';
 import SdssReportPage from './pages/SdssReportPage';
 import ChatPage from './pages/ChatPage';
 import SecondOpinionV2Page from './pages/SecondOpinionV2Page';
+import DCLPage from './pages/DCLPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function useSessionKeepAlive() {
@@ -140,6 +141,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <SecondOpinionV2Page />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dcl"
+        element={
+          <ProtectedRoute>
+            <DCLPage />
           </ProtectedRoute>
         }
       />
