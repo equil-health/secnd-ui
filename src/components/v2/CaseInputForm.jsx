@@ -4,7 +4,8 @@ import useMedASR from '../../hooks/useMedASR';
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png'];
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
 
-export default function CaseInputForm({ onSubmit, disabled }) {
+export default function CaseInputForm({ onSubmit, disabled, mode: formMode = 'secnd' }) {
+  const isDcl = formMode === 'dcl';
   const [caseText, setCaseText] = useState('');
   const [mode, setMode] = useState('standard');
   const [images, setImages] = useState([]); // [{ file, preview }]
@@ -217,7 +218,8 @@ export default function CaseInputForm({ onSubmit, disabled }) {
         </div>
       </div>
 
-      {/* Patient context — collapsible */}
+      {/* Patient context — collapsible. Hidden in DCL mode per the v1 spec. */}
+      {!isDcl && (
       <div className="border border-slate-200 rounded-xl bg-white overflow-hidden">
         <button
           type="button"
@@ -274,6 +276,7 @@ export default function CaseInputForm({ onSubmit, disabled }) {
           </div>
         )}
       </div>
+      )}
 
       {/* Mode toggle — segmented */}
       <div>
@@ -318,7 +321,7 @@ export default function CaseInputForm({ onSubmit, disabled }) {
         disabled={disabled || !caseText.trim()}
         className="group w-full py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-all disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10 hover:shadow-xl hover:shadow-slate-900/20 disabled:shadow-none"
       >
-        <span>Generate Verified Second Opinion</span>
+        <span>{isDcl ? 'Generate differential checklist' : 'Generate Verified Second Opinion'}</span>
         <svg className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-disabled:translate-x-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
         </svg>

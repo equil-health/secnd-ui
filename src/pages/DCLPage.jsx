@@ -14,6 +14,7 @@ import { getDclChecklist } from '../utils/dclApi';
 import CaseInputForm from '../components/v2/CaseInputForm';
 import CaseProgress from '../components/v2/CaseProgress';
 import UserBadge from '../components/UserBadge';
+import DCLChecklistRenderer from '../components/dcl/DCLChecklistRenderer';
 
 export default function DCLPage() {
   const navigate = useNavigate();
@@ -240,8 +241,7 @@ export default function DCLPage() {
                     We'll compile a six-zone checklist — safety alerts, treatment holds, a ranked differential, and next steps — to review alongside your own impression.
                   </p>
                 </div>
-                {/* mode="dcl" prop added to CaseInputForm in step 2 */}
-                <CaseInputForm onSubmit={handleSubmit} disabled={isSubmitting} />
+                <CaseInputForm onSubmit={handleSubmit} disabled={isSubmitting} mode="dcl" />
               </div>
             )}
 
@@ -311,7 +311,7 @@ export default function DCLPage() {
             )}
 
             {hasChecklist && (
-              <DCLChecklistPlaceholder checklist={checklist} onNewCase={handleNewCase} />
+              <DCLChecklistRenderer checklist={checklist} onNewCase={handleNewCase} />
             )}
           </div>
         </div>
@@ -320,77 +320,3 @@ export default function DCLPage() {
   );
 }
 
-// ── Step 1 placeholder ──────────────────────────────────────────
-// Replaced by src/components/dcl/DCLChecklistRenderer.jsx in step 3.
-// Intentionally minimal: renders zone names + counts so the Step 1
-// smoke test can confirm the payload reached the page and has the
-// expected shape, without pre-empting the renderer's visual design.
-
-function DCLChecklistPlaceholder({ checklist, onNewCase }) {
-  if (checklist.dev_mode_stamp) {
-    return (
-      <div className="rounded-xl bg-white border border-slate-300 p-6">
-        <p className="eyebrow text-slate-500">Refused</p>
-        <h3 className="text-lg font-semibold text-slate-900 mt-2">
-          DCL checklist is not available for cases run in developer mode.
-        </h3>
-        <button
-          onClick={onNewCase}
-          className="mt-4 px-3 py-1.5 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white rounded-md transition"
-        >
-          New case
-        </button>
-      </div>
-    );
-  }
-
-  const {
-    case_meta, verification, safety_alerts, treatment_holds,
-    ranked_differential, completeness_additions, next_steps,
-  } = checklist;
-
-  return (
-    <div className="space-y-4">
-      <div className="rounded-xl bg-white border border-slate-200 p-5">
-        <p className="eyebrow text-indigo-600">Case</p>
-        <p className="mt-1 text-sm text-slate-700">{case_meta?.case_text_preview}</p>
-        <p className="mt-1 text-[11px] text-slate-500">
-          {case_meta?.age ?? '—'} · {case_meta?.sex ?? '—'} · {case_meta?.submitted_at}
-        </p>
-      </div>
-
-      {verification && !verification.complete && (
-        <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-900">
-          Verification incomplete — skipped: {verification.skipped_stages.join(', ') || 'none'}
-        </div>
-      )}
-
-      <ZoneSummary title="Zone 1 — Safety alerts" count={safety_alerts?.length || 0} />
-      <ZoneSummary title="Zone 2 — Treatment holds" count={treatment_holds?.length || 0} />
-      <ZoneSummary title="Zone 3 — Ranked differential" count={ranked_differential?.length || 0} />
-      <ZoneSummary title="Zone 4 — Also consider" count={completeness_additions?.length || 0} />
-      <ZoneSummary title="Zone 5 — Next steps" count={next_steps?.length || 0} />
-
-      <button
-        onClick={onNewCase}
-        className="px-3 py-1.5 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white rounded-md transition"
-      >
-        New case
-      </button>
-
-      <details className="rounded-xl bg-slate-900 text-slate-100 p-4 text-[11px] font-mono">
-        <summary className="cursor-pointer text-slate-300">Raw payload (step 1 debug)</summary>
-        <pre className="mt-2 whitespace-pre-wrap break-words">{JSON.stringify(checklist, null, 2)}</pre>
-      </details>
-    </div>
-  );
-}
-
-function ZoneSummary({ title, count }) {
-  return (
-    <div className="rounded-xl bg-white border border-slate-200 px-5 py-3 flex items-center justify-between">
-      <p className="text-sm font-semibold text-slate-800">{title}</p>
-      <span className="text-[11px] text-slate-500 font-mono">{count} item{count === 1 ? '' : 's'}</span>
-    </div>
-  );
-}
