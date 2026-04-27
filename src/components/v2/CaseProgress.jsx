@@ -66,8 +66,10 @@ export default function CaseProgress({
   elapsedMs,
   queued,
   queueInfo,
+  mode = 'v2',
 }) {
-  const phrase = useRotatingPhrase(2400);
+  const rotating = useRotatingPhrase(2400);
+  const phrase = mode === 'dcl' ? 'Processing' : rotating;
 
   const pcBits = useMemo(() => {
     if (!patientContext) return [];

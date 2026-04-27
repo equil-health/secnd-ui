@@ -252,6 +252,7 @@ export default function DCLPage() {
                 elapsedMs={elapsedMs}
                 queued={isQueued}
                 queueInfo={queueInfo}
+                mode="dcl"
               />
             )}
 
