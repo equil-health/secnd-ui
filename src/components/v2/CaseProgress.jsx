@@ -1,51 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
-
-// Clinical-reasoning gerunds. Describe the kind of cognitive work a
-// thoughtful clinician does during a second opinion — deliberately
-// neutral, no reference to internal stages (no KG, no must-exclude,
-// no evidence tiers). The list leans slightly verbose on purpose so
-// the user reads a cue about care and rigour, not speed.
-const THINKING_PHRASES = [
-  'Reviewing the presentation',
-  'Considering the differential',
-  'Weighing the evidence',
-  'Correlating the findings',
-  'Examining the lab values',
-  'Interpreting the imaging',
-  'Consulting the literature',
-  'Cross-checking guidelines',
-  'Evaluating clinical context',
-  'Assessing likelihood',
-  'Ranking the hypotheses',
-  'Checking for red flags',
-  'Reconciling conflicting data',
-  'Verifying diagnostic criteria',
-  'Considering rare conditions',
-  'Reviewing drug interactions',
-  'Screening for contraindications',
-  'Calibrating confidence',
-  'Looking for overlooked diagnoses',
-  'Revisiting the history',
-  'Examining temporal patterns',
-  'Weighing sensitivity and specificity',
-  'Reviewing comparable case reports',
-  'Assessing pre-test probability',
-  'Consolidating the reasoning',
-  'Drafting the assessment',
-  'Prioritising next investigations',
-  'Reviewing the recommendations',
-  'Checking the reasoning chain',
-  'Finalising the report',
-];
-
-function useRotatingPhrase(intervalMs = 6000) {
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), intervalMs);
-    return () => clearInterval(id);
-  }, [intervalMs]);
-  return THINKING_PHRASES[tick % THINKING_PHRASES.length];
-}
+import { useMemo } from 'react';
 
 function formatElapsed(ms) {
   const s = Math.floor(ms / 1000);
@@ -66,10 +19,8 @@ export default function CaseProgress({
   elapsedMs,
   queued,
   queueInfo,
-  mode = 'v2',
 }) {
-  const rotating = useRotatingPhrase(2400);
-  const phrase = mode === 'dcl' ? 'Processing' : rotating;
+  const phrase = 'Processing';
 
   const pcBits = useMemo(() => {
     if (!patientContext) return [];
