@@ -10,6 +10,7 @@ import SubmitPage from './pages/SubmitPage';
 import LandingPage from './pages/LandingPage';
 import ResearchPage from './pages/ResearchPage';
 import PulsePage from './pages/PulsePage';
+import PulseV2Page from './pages/PulseV2Page';
 import BreakingPage from './pages/BreakingPage';
 import LoginPage from './pages/LoginPage';
 import AdminPage from './pages/AdminPage';
@@ -85,6 +86,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <PulsePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/pulse/v2"
+        element={
+          <ProtectedRoute>
+            <PulseV2Page />
           </ProtectedRoute>
         }
       />

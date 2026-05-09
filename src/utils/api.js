@@ -327,6 +327,11 @@ export async function getPulseSpecialties() {
   return res.json();
 }
 
+export async function getPulseVersion() {
+  const res = await request(`${BASE}/pulse/version`);
+  return res.json();
+}
+
 // ── Breaking (Pulse v2) ─────────────────────────────────────────
 
 export async function getBreakingHeadlines() {

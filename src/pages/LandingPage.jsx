@@ -81,6 +81,14 @@ const SECONDARY_FEATURES = [
     path: '/pulse',
     badge: 'New',
   },
+  {
+    id: 'pulse-v2',
+    title: 'Pulse · Multi-source',
+    description: 'PubMed + Europe PMC + OpenAlex + preprints, deduped. New deeper archive view.',
+    icon: Icon.pulse,
+    path: '/pulse/v2',
+    badge: 'v2',
+  },
 ];
 
 // Stats rendered in the left column; placeholder numbers until wired to
